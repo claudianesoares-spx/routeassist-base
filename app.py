@@ -3,6 +3,12 @@ import pandas as pd
 import unicodedata
 import re
 
+# ⚠️ TEM QUE VIR AQUI, ANTES DE QUALQUER def
+st.set_page_config(
+    page_title="SPX | Consulta de Rotas",
+    layout="centered"
+)
+
 def normalizar_texto(texto):
     if not isinstance(texto, str):
         return ""
@@ -10,15 +16,10 @@ def normalizar_texto(texto):
     texto = texto.strip().lower()
     texto = unicodedata.normalize("NFKD", texto)
     texto = texto.encode("ascii", "ignore").decode("utf-8")
-    texto = re.sub(r"\s+", " ", texto)  # remove espaços extras
+    texto = re.sub(r"\s+", " ", texto)
     
     return texto
 
-# ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
-st.set_page_config(
-    page_title="SPX | Consulta de Rotas",
-    layout="centered"
-)
 # ---------------- ESTILO SPX ----------------
 st.markdown("""
 <style>
@@ -121,6 +122,7 @@ st.markdown("""
     Base atualizada diariamente após alocação
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
