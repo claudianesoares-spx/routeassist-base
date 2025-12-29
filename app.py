@@ -1,13 +1,15 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime
 import unicodedata
+import re
+
 def normalizar_texto(texto):
-    if pd.isna(texto):
+    if not isinstance(texto, str):
         return ""
-    texto = str(texto).strip().lower()
-    texto = unicodedata.normalize("NFD", texto)
+    
+    texto = texto.strip().lower()
+    texto = unicodedata.normalize("NFKD", texto)
     texto = texto.encode("ascii", "ignore").decode("utf-8")
+    texto = re.sub(r"\s+", " ", texto)  # remove espaços extras
+    
     return texto
 
 # ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
@@ -119,4 +121,5 @@ st.markdown("""
     Base atualizada diariamente após alocação
 </div>
 """, unsafe_allow_html=True)
+
 
