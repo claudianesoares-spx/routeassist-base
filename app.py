@@ -1,6 +1,14 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import unicodedata
+def normalizar_texto(texto):
+    if pd.isna(texto):
+        return ""
+    texto = str(texto).strip().lower()
+    texto = unicodedata.normalize("NFD", texto)
+    texto = texto.encode("ascii", "ignore").decode("utf-8")
+    return texto
 
 # ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
 st.set_page_config(
@@ -63,6 +71,10 @@ st.markdown(
 try:
     df = pd.read_excel("rotas.xlsx")
     df.columns = df.columns.str.strip().str.lower()
+
+    # normalizar coluna nome
+    df["nome_normalizado"] = df["nome"].apply(normalizar_texto)
+
 except Exception:
     st.error("Erro ao carregar a base de dados.")
     st.stop()
@@ -72,10 +84,10 @@ st.markdown("### 🔎 Buscar rota")
 nome = st.text_input("Nome completo do motorista")
 
 if nome:
-    nome_busca = nome.strip().lower()
+    nome_busca = normalizar_texto(nome)
 
     resultado = df[
-        df["nome"].astype(str).str.strip().str.lower() == nome_busca
+        df["nome_normalizado"] == nome_busca
     ]
 
     if not resultado.empty:
@@ -107,3 +119,4 @@ st.markdown("""
     Base atualizada diariamente após alocação
 </div>
 """, unsafe_allow_html=True)
+
