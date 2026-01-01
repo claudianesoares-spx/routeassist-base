@@ -68,10 +68,6 @@ except Exception as e:
     st.stop()
 
 # ================== CONSULTA ==================
-st.markdown("### 🔍 Consulta de Rotas")
-
-nome = st.text_input("Digite o nome completo ou parcial do motorista")
-
 if nome:
     resultado = df[df["Nome"].str.contains(nome, case=False, na=False)]
 
@@ -88,10 +84,14 @@ if nome:
                 margin-bottom: 14px;
                 box-shadow: 0 4px 10px rgba(0,0,0,0.05);
             ">
-                <strong>🚚 Rota:</strong> {r['Rota']}<br>
-                <strong>👤 Motorista:</strong> {r['Nome']}<br>
-                <strong>🚗 Placa:</strong> {r['Placa']}<br>
-                <strong>🏙️ Cidade:</strong> {r['Cidade']}<br>
-                <strong>📍 Bairro:</strong> {r['Bairro']}
+                <div style="font-size:18px; font-weight:600; margin-bottom:8px;">
+                    🚚 Rota: {r['Rota']}
+                </div>
+                👤 <strong>Motorista:</strong> {r['Nome']}<br>
+                🚗 <strong>Placa:</strong> {r['Placa']}<br>
+                🏙️ <strong>Cidade:</strong> {r['Cidade']}<br>
+                📍 <strong>Bairro:</strong> {r['Bairro']}
             </div>
             """, unsafe_allow_html=True)
+
+
