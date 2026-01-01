@@ -2,12 +2,20 @@ import streamlit as st
 import json
 import os
 from datetime import datetime
+import pandas as pd
 
 # ================= CONFIGURAÇÃO DA PÁGINA =================
 st.set_page_config(
     page_title="SPX | Consulta de Rotas",
     page_icon="🚚",
     layout="centered"
+)
+
+# ================= PLANILHA =================
+PLANILHA_URL = (
+    "https://docs.google.com/spreadsheets/d/"
+    "1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI"
+    "/export?format=xlsx"
 )
 
 # ================= ARQUIVO DE PERSISTÊNCIA =================
@@ -122,10 +130,43 @@ if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
     st.stop()
 
-# ================= CONSULTA (MANTIDA) =================
+# ================= CONSULTA =================
 st.markdown("### 🔍 Consulta")
 
 nome = st.text_input("Digite o nome do motorista")
 
+@st.cache_data(ttl=300)
+def carregar_base():
+    return pd.read_excel(PLANILHA_URL)
+
 if nome:
-    st.info("⚠️ Base de dados ainda não conectada.")
+    try:
+        df = carregar_base()
+
+        resultado = df[
+            df["Nome"].astype(str)
+            .str.contains(nome, case=False, na=False)
+        ]
+
+        if resultado.empty:
+            st.error("❌ Rota não atribuída para este motorista.")
+        else:
+            for _, row in resultado.iterrows():
+                st.markdown(
+                    f"""
+🚚 **Rota:** {row.get('Rota', '-')}
+
+👤 **Motorista:** {row.get('Nome', '-')}
+
+🚗 **Placa:** {row.get('Placa', '-')}
+
+🏙️ **Cidade:** {row.get('Cidade', '-')}
+
+📍 **Bairro:** {row.get('Bairro', '-')}
+
+---
+"""
+                )
+
+    except Exception as e:
+        st.error("Erro ao carregar a base de dados.")
