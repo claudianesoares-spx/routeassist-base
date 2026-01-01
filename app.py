@@ -53,11 +53,18 @@ config = carregar_config()
 def limpar_logs_3_dias():
     if not os.path.exists(LOG_FILE):
         return
-    df = pd.read_csv(LOG_FILE)
-    df['Data'] = pd.to_datetime(df['Data'], format="%d/%m/%Y")
-    limite = datetime.now() - timedelta(days=3)
-    df_limpo = df[df['Data'] >= limite]
-    df_limpo.to_csv(LOG_FILE, index=False)
+    try:
+        df = pd.read_csv(LOG_FILE)
+        if df.empty or 'Data' not in df.columns:
+            return
+        # Converte Data, ignorando valores inválidos
+        df['Data'] = pd.to_datetime(df['Data'], format="%d/%m/%Y", errors='coerce')
+        df = df.dropna(subset=['Data'])
+        limite = datetime.now() - timedelta(days=3)
+        df_limpo = df[df['Data'] >= limite]
+        df_limpo.to_csv(LOG_FILE, index=False)
+    except Exception as e:
+        st.warning(f"Não foi possível limpar os logs: {e}")
 
 limpar_logs_3_dias()
 
@@ -116,21 +123,12 @@ def carregar_base():
 df = carregar_base()
 
 # ---------------- LOGIN ----------------
-temporary_passwords = {}  # reservado caso queira no futuro
-
 with st.sidebar:
     st.markdown("## 🔒 Área Administrativa")
     senha = st.text_input("Senha", type="password")
 
     nivel = None
-    current_time = time.time()
 
-    # Remove temporárias expiradas
-    expired = [k for k, v in temporary_passwords.items() if v < current_time]
-    for k in expired:
-        del temporary_passwords[k]
-
-    # Verifica senha
     if senha == config["senha_master"]:
         nivel = "MASTER"
     elif senha == config["senha_operacional"]:
@@ -152,6 +150,7 @@ with st.sidebar:
             registrar_log("Consulta FECHADA", nivel)
             st.rerun()
 
+        # MASTER ONLY
         if nivel == "MASTER":
             st.markdown("---")
             st.markdown("### 🔑 Gerenciar Senhas")
