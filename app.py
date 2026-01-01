@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
-import os
 import json
+import os
 
 # ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
 st.set_page_config(
@@ -18,35 +18,28 @@ LOG_FILE = "logs.csv"
 # ---------------- CONFIG INICIAL ----------------
 def carregar_config():
     if not os.path.exists(CONFIG_FILE):
+        # Cria config vazio, sem senhas hardcoded
         config = {
-            "senha_master": "MASTER2026",
-            "senha_operacional": "LPA2026",
+            "senha_master": "",
+            "senha_operacional": "",
             "status_site": "ABERTO"
         }
-        salvar_config(config)
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f)
+        st.warning("Configuração inicial criada! Defina as senhas Master e Operacional no app.")
     else:
-        try:
-            with open(CONFIG_FILE, "r") as f:
-                config = json.load(f)
-        except:
-            config = {
-                "senha_master": "MASTER2026",
-                "senha_operacional": "LPA2026",
-                "status_site": "ABERTO"
-            }
-    # Garantir que todas as chaves existem
-    config.setdefault("senha_master", "MASTER2026")
-    config.setdefault("senha_operacional", "LPA2026")
-    config.setdefault("status_site", "ABERTO")
+        with open(CONFIG_FILE, "r") as f:
+            config = json.load(f)
+        # Se senhas não existirem, inicializa vazio
+        config.setdefault("senha_master", "")
+        config.setdefault("senha_operacional", "")
+        config.setdefault("status_site", "ABERTO")
     return config
 
 def salvar_config(config):
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f)
 
-config = carregar_config()
-
-# ---------------- LOGS ----------------
 def registrar_log(acao, nivel):
     linha = {
         "Data": datetime.now().strftime("%d/%m/%Y"),
@@ -59,7 +52,9 @@ def registrar_log(acao, nivel):
     else:
         pd.DataFrame([linha]).to_csv(LOG_FILE, mode="a", header=False, index=False)
 
-# ---------------- LIMPEZA DE LOGS (3 DIAS) ----------------
+config = carregar_config()
+
+# ---------------- LIMPEZA AUTOMÁTICA DE LOGS (3 DIAS) ----------------
 def limpar_logs_3_dias():
     if not os.path.exists(LOG_FILE):
         return
@@ -81,11 +76,30 @@ limpar_logs_3_dias()
 st.markdown("""
 <style>
 .stApp { background-color: #f6f7f9; }
-.header-card { background: white; padding: 24px; border-radius: 16px; border-left: 6px solid #ff7a00; margin-bottom: 30px; }
+.header-card {
+    background: white;
+    padding: 24px 28px;
+    border-radius: 16px;
+    border-left: 6px solid #ff7a00;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
+    margin-bottom: 30px;
+}
 .header-title { font-size: 32px; font-weight: 700; color: #1f2937; }
 .header-sub { font-size: 14px; color: #6b7280; margin-top: 4px; }
-.result-card { background: white; padding: 20px; border-radius: 14px; border: 1px solid #e5e7eb; margin-bottom: 16px; }
-.result-title { font-size: 20px; font-weight: 700; color: #ff7a00; margin-bottom: 12px; }
+.header-info { margin-top: 14px; font-size: 15px; color: #374151; }
+.result-card {
+    background: white;
+    padding: 20px;
+    border-radius: 14px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 16px;
+}
+.result-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #ff7a00;
+    margin-bottom: 12px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -94,6 +108,9 @@ st.markdown("""
 <div class="header-card">
     <div class="header-title">🚚 SPX | Consulta de Rotas</div>
     <div class="header-sub">Shopee Express • Operação Logística</div>
+    <div class="header-info">
+        Consulta disponível <strong>somente após a alocação das rotas</strong>.
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -104,7 +121,8 @@ URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y
 def carregar_base():
     df = pd.read_excel(URL_PLANILHA)
     df.columns = df.columns.str.strip()
-    return df.fillna("")
+    df = df.fillna("")
+    return df
 
 df = carregar_base()
 
@@ -114,31 +132,29 @@ with st.sidebar:
     senha = st.text_input("Senha", type="password")
 
     nivel = None
-    if senha == config["senha_master"]:
+
+    if senha == config["senha_master"] and config["senha_master"]:
         nivel = "MASTER"
-    elif senha == config["senha_operacional"]:
+    elif senha == config["senha_operacional"] and config["senha_operacional"]:
         nivel = "OPERACIONAL"
 
     if nivel:
         st.success(f"Acesso {nivel}")
         st.markdown(f"**🚦 Status:** `{config['status_site']}`")
+
         col1, col2 = st.columns(2)
+        if col1.button("🟢 Abrir"):
+            config["status_site"] = "ABERTO"
+            salvar_config(config)
+            registrar_log("Consulta ABERTA", nivel)
+            st.experimental_rerun()
+        if col2.button("🔴 Fechar"):
+            config["status_site"] = "FECHADO"
+            salvar_config(config)
+            registrar_log("Consulta FECHADA", nivel)
+            st.experimental_rerun()
 
-        try:
-            if col1.button("🟢 Abrir"):
-                config["status_site"] = "ABERTO"
-                salvar_config(config)
-                registrar_log("Consulta ABERTA", nivel)
-                st.experimental_rerun()
-
-            if col2.button("🔴 Fechar"):
-                config["status_site"] = "FECHADO"
-                salvar_config(config)
-                registrar_log("Consulta FECHADA", nivel)
-                st.experimental_rerun()
-        except:
-            st.warning("Erro temporário ao atualizar status. Recarregue o app.")
-
+        # MASTER ONLY
         if nivel == "MASTER":
             st.markdown("---")
             st.markdown("### 🔑 Gerenciar Senhas")
@@ -163,9 +179,9 @@ with st.sidebar:
     elif senha:
         st.error("Senha incorreta")
 
-# ---------------- BLOQUEIO ----------------
+# ---------------- BLOQUEIO USUÁRIO ----------------
 if config["status_site"] == "FECHADO":
-    st.warning("Consulta temporariamente indisponível.")
+    st.warning("🚫 Consulta temporariamente indisponível.")
     st.stop()
 
 # ---------------- BUSCA ----------------
