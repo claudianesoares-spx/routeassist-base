@@ -1,42 +1,42 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import os
 
-# ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
+# ================= CONFIGURAÇÃO DA PÁGINA =================
 st.set_page_config(
     page_title="SPX | Consulta de Rotas",
     page_icon="🚚",
     layout="centered"
 )
 
-# ---------------- ARQUIVOS ----------------
+# ================= ARQUIVOS =================
 CONFIG_FILE = "config.json"
 LOG_FILE = "logs.csv"
 
-# ---------------- CONFIG PADRÃO ----------------
+# ================= CONFIG PADRÃO =================
 CONFIG_PADRAO = {
     "senha_master": "MASTER2026",
     "senha_operacional": "LPA2026",
     "status_site": "ABERTO"
 }
 
-# ---------------- CRIA CONFIG SE NÃO EXISTIR ----------------
+# ================= CRIA CONFIG SE NÃO EXISTIR =================
 if not os.path.exists(CONFIG_FILE):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(CONFIG_PADRAO, f, indent=4)
 
-# ---------------- CARREGA CONFIG ----------------
+# ================= CARREGA CONFIG =================
 with open(CONFIG_FILE, "r", encoding="utf-8") as f:
     config = json.load(f)
 
-# ---------------- FUNÇÃO SALVAR CONFIG ----------------
+# ================= FUNÇÃO SALVAR CONFIG =================
 def salvar_config():
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4)
 
-# ---------------- FUNÇÃO LOG ----------------
+# ================= FUNÇÃO LOG =================
 def registrar_log(acao, nivel):
     linha = {
         "Data": datetime.now().strftime("%d/%m/%Y"),
@@ -50,7 +50,7 @@ def registrar_log(acao, nivel):
     else:
         df.to_csv(LOG_FILE, mode="a", header=False, index=False)
 
-# ---------------- ESTILO ----------------
+# ================= ESTILO =================
 st.markdown("""
 <style>
 .stApp { background-color: #f6f7f9; }
@@ -81,7 +81,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ---------------- CABEÇALHO ----------------
+# ================= CABEÇALHO =================
 st.markdown("""
 <div class="header-card">
     <div class="header-title">🚚 SPX | Consulta de Rotas</div>
@@ -92,61 +92,64 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------- LOGIN ----------------
-with st.sidebar:
-    st.markdown("## 🔒 Área Administrativa")
-    senha = st.text_input("Senha", type="password")
+# ================= LOGIN =================
+nivel = None
+senha = st.sidebar.text_input("Senha", type="password")
 
-    nivel = None
+if senha:
     if senha == config["senha_master"]:
         nivel = "MASTER"
+        registrar_log("Login realizado", nivel)
+        st.sidebar.success("Acesso MASTER")
     elif senha == config["senha_operacional"]:
         nivel = "OPERACIONAL"
-
-    if nivel:
-        st.success(f"Acesso {nivel}")
         registrar_log("Login realizado", nivel)
-        st.markdown(f"**🚦 Status:** `{config['status_site']}`")
+        st.sidebar.success("Acesso OPERACIONAL")
+    else:
+        st.sidebar.error("Senha incorreta")
 
-        col1, col2 = st.columns(2)
-        if col1.button("🟢 Abrir"):
-            config["status_site"] = "ABERTO"
-            salvar_config()
-            st.experimental_rerun()
-        if col2.button("🔴 Fechar"):
-            config["status_site"] = "FECHADO"
-            salvar_config()
-            st.experimental_rerun()
+# ================= PAINEL ADMINISTRATIVO =================
+if nivel:
+    st.sidebar.markdown(f"**🚦 Status atual:** `{config['status_site']}`")
 
-        # MASTER ONLY
-        if nivel == "MASTER":
-            st.markdown("---")
-            st.markdown("### 🔑 Gerenciar Senhas")
-            nova_op = st.text_input("Nova senha operacional", type="password")
-            if st.button("Salvar senha operacional") and nova_op:
-                config["senha_operacional"] = nova_op
-                salvar_config()
-                st.success("Senha operacional atualizada")
-            nova_master = st.text_input("Nova senha master", type="password")
-            if st.button("Salvar senha master") and nova_master:
+    # Botões Abrir/Fechar apenas após login
+    col1, col2 = st.sidebar.columns(2)
+    if col1.button("🟢 Abrir"):
+        config["status_site"] = "ABERTO"
+        salvar_config()
+        st.experimental_rerun()
+    if col2.button("🔴 Fechar"):
+        config["status_site"] = "FECHADO"
+        salvar_config()
+        st.experimental_rerun()
+
+    # MASTER ONLY
+    if nivel == "MASTER":
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 🔑 Alterar Senhas")
+        nova_master = st.sidebar.text_input("Nova senha MASTER", type="password")
+        nova_operacional = st.sidebar.text_input("Nova senha OPERACIONAL", type="password")
+        if st.sidebar.button("Salvar Senhas"):
+            if nova_master:
                 config["senha_master"] = nova_master
-                salvar_config()
-                st.success("Senha master atualizada")
+            if nova_operacional:
+                config["senha_operacional"] = nova_operacional
+            salvar_config()
+            st.sidebar.success("Senhas atualizadas")
 
-            st.markdown("---")
-            st.markdown("### 📜 Histórico")
-            if os.path.exists(LOG_FILE):
-                st.dataframe(pd.read_csv(LOG_FILE), use_container_width=True)
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 📜 Histórico de Acessos")
+        if os.path.exists(LOG_FILE):
+            st.sidebar.dataframe(pd.read_csv(LOG_FILE), use_container_width=True)
+        else:
+            st.sidebar.info("Nenhum log registrado")
 
-    elif senha:
-        st.error("Senha incorreta")
-
-# ---------------- BLOQUEIO ----------------
+# ================= BLOQUEIO =================
 if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta temporariamente indisponível.")
     st.stop()
 
-# ---------------- BUSCA ----------------
+# ================= BUSCA =================
 nome_busca = st.text_input("Digite o **nome completo ou parcial** do motorista:")
 
 if nome_busca:
