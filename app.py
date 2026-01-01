@@ -3,101 +3,117 @@ import json
 import os
 from datetime import datetime
 
-# ================= CONFIGURAÇÃO =================
+# ================= CONFIGURAÇÃO DA PÁGINA =================
 st.set_page_config(
     page_title="SPX | Consulta de Rotas",
     page_icon="🚚",
     layout="centered"
 )
 
-ARQUIVO_STATUS = "status.json"
+# ================= ARQUIVO DE PERSISTÊNCIA =================
+CONFIG_FILE = "config.json"
 
 # ================= CONFIG PADRÃO =================
-CONFIG_PADRAO = {
+DEFAULT_CONFIG = {
     "status_site": "FECHADO",
     "senha_master": "MASTER2026",
     "historico": []
 }
 
-# ================= CARREGAR / CRIAR STATUS =================
-if not os.path.exists(ARQUIVO_STATUS):
-    with open(ARQUIVO_STATUS, "w", encoding="utf-8") as f:
-        json.dump(CONFIG_PADRAO, f, indent=4)
+# ================= LOAD / SAVE =================
+def load_config():
+    if not os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(DEFAULT_CONFIG, f, indent=4, ensure_ascii=False)
+        return DEFAULT_CONFIG.copy()
 
-with open(ARQUIVO_STATUS, "r", encoding="utf-8") as f:
-    config = json.load(f)
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
 
-# ================= FUNÇÃO SALVAR =================
-def salvar():
-    with open(ARQUIVO_STATUS, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=4)
+def save_config(cfg):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=4, ensure_ascii=False)
 
+config = load_config()
+
+# ================= FUNÇÃO LOG =================
 def registrar_acao(usuario, acao):
     config["historico"].append({
         "data": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
         "usuario": usuario,
         "acao": acao
     })
-    salvar()
+    save_config(config)
 
 # ================= CABEÇALHO =================
 st.title("🚚 SPX | Consulta de Rotas")
 st.markdown("Consulta disponível **somente após a alocação das rotas**.")
 st.divider()
 
-# ================= ÁREA ADMIN =================
+# ================= SIDEBAR / ADMIN =================
 with st.sidebar:
-    st.markdown("## 🔒 Área Administrativa")
-    senha = st.text_input("Senha", type="password")
+    with st.expander("🔒 Área Administrativa", expanded=False):
 
-    nivel = None
+        senha = st.text_input("Senha", type="password")
+        nivel = None
 
-    if senha == config["senha_master"]:
-        nivel = "MASTER"
-        st.success("Acesso MASTER liberado")
-    elif senha == "LPA2026":
-        nivel = "ADMIN"
-        st.success("Acesso ADMIN liberado")
-    elif senha:
-        st.error("Senha incorreta")
+        if senha == config["senha_master"]:
+            nivel = "MASTER"
+            st.success("Acesso MASTER liberado")
 
-    if nivel in ["ADMIN", "MASTER"]:
-        st.markdown("---")
-        st.markdown("### ⚙️ Controle da Consulta")
+        elif senha == "LPA2026":
+            nivel = "ADMIN"
+            st.success("Acesso ADMIN liberado")
 
-        col1, col2 = st.columns(2)
+        elif senha:
+            st.error("Senha incorreta")
 
-        with col1:
-            if st.button("🔓 ABRIR"):
-                config["status_site"] = "ABERTO"
-                registrar_acao(nivel, "ABRIU CONSULTA")
-                st.success("Consulta ABERTA")
+        # ===== CONTROLE =====
+        if nivel in ["ADMIN", "MASTER"]:
+            st.markdown("---")
+            st.markdown("### ⚙️ Controle da Consulta")
 
-        with col2:
-            if st.button("🔒 FECHAR"):
-                config["status_site"] = "FECHADO"
-                registrar_acao(nivel, "FECHOU CONSULTA")
-                st.warning("Consulta FECHADA")
+            col1, col2 = st.columns(2)
 
-    if nivel == "MASTER":
-        st.markdown("---")
-        st.markdown("### 🔑 Trocar senha MASTER")
-        nova = st.text_input("Nova senha MASTER", type="password")
+            with col1:
+                if st.button("🔓 ABRIR"):
+                    config["status_site"] = "ABERTO"
+                    registrar_acao(nivel, "ABRIU CONSULTA")
+                    st.success("Consulta ABERTA")
 
-        if st.button("Salvar nova senha"):
-            if nova:
-                config["senha_master"] = nova
-                registrar_acao("MASTER", "ALTEROU SENHA MASTER")
-                st.success("Senha atualizada")
+            with col2:
+                if st.button("🔒 FECHAR"):
+                    config["status_site"] = "FECHADO"
+                    registrar_acao(nivel, "FECHOU CONSULTA")
+                    st.warning("Consulta FECHADA")
+
+        # ===== MASTER =====
+        if nivel == "MASTER":
+            st.markdown("---")
+            st.markdown("### 🔑 Trocar senha MASTER")
+
+            nova_senha = st.text_input("Nova senha MASTER", type="password")
+
+            if st.button("Salvar nova senha"):
+                if nova_senha:
+                    config["senha_master"] = nova_senha
+                    registrar_acao("MASTER", "ALTEROU SENHA MASTER")
+                    st.success("Senha MASTER atualizada")
+                else:
+                    st.error("Digite uma senha válida")
+
+            st.markdown("---")
+            st.markdown("### 📜 Histórico de ações")
+
+            if config["historico"]:
+                for h in reversed(config["historico"]):
+                    st.markdown(
+                        f"- {h['data']} | **{h['usuario']}** | {h['acao']}"
+                    )
             else:
-                st.error("Senha inválida")
+                st.info("Nenhuma ação registrada")
 
-        st.markdown("---")
-        st.markdown("### 📜 Histórico")
-        for h in reversed(config["historico"]):
-            st.markdown(f"- {h['data']} | **{h['usuario']}** | {h['acao']}")
-
-# ================= STATUS GLOBAL =================
+# ================= STATUS ATUAL =================
 st.markdown(f"### 📌 Status atual: **{config['status_site']}**")
 st.divider()
 
@@ -106,8 +122,9 @@ if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
     st.stop()
 
-# ================= CONSULTA =================
+# ================= CONSULTA (MANTIDA) =================
 st.markdown("### 🔍 Consulta")
+
 nome = st.text_input("Digite o nome do motorista")
 
 if nome:
