@@ -18,37 +18,37 @@ URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y
 if "status_site" not in st.session_state:
     st.session_state.status_site = "FECHADO"
 
+# ---------------- SIDEBAR (ADMIN DISCRETO) ----------------
+with st.sidebar:
+    st.markdown("## 🔐 Administração")
+
+    with st.expander("Acesso restrito"):
+        senha = st.text_input("Senha administrativa", type="password")
+
+        if senha == SENHA_ADMIN:
+            st.success("Acesso liberado")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("🟢 Abrir"):
+                    st.session_state.status_site = "ABERTO"
+                    st.success("Consulta ABERTA")
+
+            with col2:
+                if st.button("🔴 Fechar"):
+                    st.session_state.status_site = "FECHADO"
+                    st.warning("Consulta FECHADA")
+
+        elif senha:
+            st.error("Senha incorreta")
+
 # ---------------- CABEÇALHO ----------------
 st.title("🚚 SPX | Consulta de Rotas")
 st.markdown("Consulta disponível **somente após a alocação das rotas**.")
 st.divider()
 
-# ---------------- ÁREA ADMIN ----------------
-st.markdown("### 🔒 Área Administrativa")
-
-senha = st.text_input("Senha administrativa", type="password")
-
-if senha == SENHA_ADMIN:
-    st.success("Acesso administrativo liberado")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("🔓 ABRIR CONSULTA"):
-            st.session_state.status_site = "ABERTO"
-            st.success("Consulta ABERTA")
-
-    with col2:
-        if st.button("🔒 FECHAR CONSULTA"):
-            st.session_state.status_site = "FECHADO"
-            st.warning("Consulta FECHADA")
-
-elif senha:
-    st.error("Senha incorreta")
-
-st.divider()
-
-# ---------------- STATUS ----------------
+# ---------------- STATUS VISÍVEL ----------------
 st.markdown(f"### 📌 Status atual: **{st.session_state.status_site}**")
 
 # ---------------- BLOQUEIO ----------------
@@ -65,7 +65,7 @@ def carregar_base():
 
 try:
     df = carregar_base()
-except Exception as e:
+except:
     st.error("Erro ao carregar a base de dados.")
     st.stop()
 
