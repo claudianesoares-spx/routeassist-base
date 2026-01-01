@@ -1,143 +1,80 @@
 import streamlit as st
-import pandas as pd
-from datetime import datetime
-import json
-import os
 
-# ================= CONFIGURAÇÃO DA PÁGINA =================
+# ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
 st.set_page_config(
     page_title="SPX | Consulta de Rotas",
     page_icon="🚚",
     layout="centered"
 )
 
-# ================= ARQUIVOS =================
-CONFIG_FILE = "config.json"
-LOG_FILE = "logs.csv"
+# ---------------- INICIALIZAÇÃO DE ESTADO ----------------
+if "master_password" not in st.secrets:
+    st.secrets["master_password"] = ""
+if "oper_password" not in st.secrets:
+    st.secrets["oper_password"] = ""
+if "status" not in st.secrets:
+    st.secrets["status"] = "FECHADO"
 
-# ================= CONFIG PADRÃO =================
-CONFIG_PADRAO = {
-    "senha_master": "MASTER2026",
-    "senha_operacional": "LPA2026",
-    "status_site": "ABERTO"
-}
+# ---------------- CONFIGURAÇÃO INICIAL ----------------
+if st.secrets["master_password"] == "" or st.secrets["oper_password"] == "":
+    st.title("🔐 Configuração Inicial")
 
-# ================= CRIA CONFIG SE NÃO EXISTIR =================
-if not os.path.exists(CONFIG_FILE):
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(CONFIG_PADRAO, f, indent=4)
+    master = st.text_input("Defina a senha MASTER", type="password")
+    oper = st.text_input("Defina a senha OPERACIONAL", type="password")
 
-# ================= CARREGA CONFIG =================
-with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-    config = json.load(f)
-
-# ================= FUNÇÃO SALVAR CONFIG =================
-def salvar_config():
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=4)
-
-# ================= FUNÇÃO LOG =================
-def registrar_log(acao, nivel):
-    linha = {
-        "Data": datetime.now().strftime("%d/%m/%Y"),
-        "Hora": datetime.now().strftime("%H:%M:%S"),
-        "Ação": acao,
-        "Acesso": nivel
-    }
-    df = pd.DataFrame([linha])
-    if not os.path.exists(LOG_FILE):
-        df.to_csv(LOG_FILE, index=False)
-    else:
-        df.to_csv(LOG_FILE, mode="a", header=False, index=False)
-
-# ================= ESTILO =================
-st.markdown("""
-<style>
-.stApp { background-color: #f6f7f9; }
-.header-card {
-    background: white;
-    padding: 24px 28px;
-    border-radius: 16px;
-    border-left: 6px solid #ff7a00;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.05);
-    margin-bottom: 30px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# ================= CABEÇALHO =================
-st.markdown("""
-<div class="header-card">
-<h2>🚚 SPX | Consulta de Rotas</h2>
-<p>Consulta disponível somente após a alocação das rotas.</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ================= LOGIN =================
-nivel = None
-senha = st.sidebar.text_input("Senha", type="password")
-
-if senha:
-    if senha == config["senha_master"]:
-        nivel = "MASTER"
-        registrar_log("Login realizado", nivel)
-        st.sidebar.success("Acesso MASTER")
-    elif senha == config["senha_operacional"]:
-        nivel = "OPERACIONAL"
-        registrar_log("Login realizado", nivel)
-        st.sidebar.success("Acesso OPERACIONAL")
-    else:
-        st.sidebar.error("Senha incorreta")
-
-# ================= PAINEL ADMIN =================
-if nivel:
-    st.sidebar.markdown(f"**🚦 Status atual:** `{config['status_site']}`")
-
-    col1, col2 = st.sidebar.columns(2)
-
-    if col1.button("🟢 Abrir"):
-        config["status_site"] = "ABERTO"
-        salvar_config()
-        st.rerun()
-
-    if col2.button("🔴 Fechar"):
-        config["status_site"] = "FECHADO"
-        salvar_config()
-        st.rerun()
-
-    # MASTER ONLY
-    if nivel == "MASTER":
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 🔑 Alterar Senhas")
-
-        nova_master = st.sidebar.text_input("Nova senha MASTER", type="password")
-        nova_operacional = st.sidebar.text_input("Nova senha OPERACIONAL", type="password")
-
-        if st.sidebar.button("Salvar Senhas"):
-            if nova_master:
-                config["senha_master"] = nova_master
-            if nova_operacional:
-                config["senha_operacional"] = nova_operacional
-            salvar_config()
-            st.sidebar.success("Senhas atualizadas")
-
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("### 📜 Histórico")
-
-        if os.path.exists(LOG_FILE):
-            st.sidebar.dataframe(pd.read_csv(LOG_FILE), use_container_width=True)
+    if st.button("Salvar senhas"):
+        if master and oper:
+            st.secrets["master_password"] = master
+            st.secrets["oper_password"] = oper
+            st.success("✅ Senhas configuradas com sucesso!")
+            st.rerun()
         else:
-            st.sidebar.info("Nenhum log registrado")
-
-# ================= BLOQUEIO =================
-if config["status_site"] == "FECHADO":
-    st.warning("🚫 Consulta temporariamente indisponível.")
+            st.error("Preencha ambas as senhas.")
     st.stop()
 
-# ================= CONSULTA =================
-st.markdown("### 🔍 Consulta")
+# ---------------- LOGIN ----------------
+st.title("🚚 SPX | Consulta de Rotas")
+senha = st.text_input("Digite sua senha", type="password")
 
-nome = st.text_input("Digite o nome do motorista")
+if senha == st.secrets["master_password"]:
+    perfil = "MASTER"
+elif senha == st.secrets["oper_password"]:
+    perfil = "OPERACIONAL"
+else:
+    perfil = None
 
-if nome:
-    st.info("⚠️ Base de dados ainda não conectada.")
+if not perfil:
+    st.warning("🔒 Acesso restrito")
+    st.stop()
+
+st.success(f"Acesso autorizado ({perfil})")
+
+# ---------------- ÁREA ADMINISTRATIVA ----------------
+st.divider()
+st.subheader("⚙️ Área Administrativa")
+
+st.info(f"Status atual: **{st.secrets['status']}**")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    if st.button("🟢 ABRIR"):
+        st.secrets["status"] = "ABERTO"
+        st.success("Status alterado para ABERTO")
+        st.rerun()
+
+with col2:
+    if st.button("🔴 FECHAR"):
+        st.secrets["status"] = "FECHADO"
+        st.warning("Status alterado para FECHADO")
+        st.rerun()
+
+# ---------------- ÁREA DE CONSULTA ----------------
+st.divider()
+st.subheader("📄 Consulta")
+
+if st.secrets["status"] == "FECHADO":
+    st.error("🚫 Consulta fechada no momento.")
+else:
+    st.success("✅ Consulta aberta.")
+    st.write("Aqui entra a lógica de consulta de rotas.")
