@@ -7,73 +7,74 @@ st.set_page_config(
     layout="centered"
 )
 
-# ---------------- SENHAS FIXAS ----------------
+# ---------------- SENHAS ----------------
 SENHA_MASTER = "MASTER2026"
 SENHA_OPERACIONAL = "OPER2026"
 
 # ---------------- ESTADO ----------------
-if "logado" not in st.session_state:
-    st.session_state.logado = False
-
 if "perfil" not in st.session_state:
     st.session_state.perfil = None
 
-if "status" not in st.session_state:
-    st.session_state.status = "FECHADO"
+if "status_site" not in st.session_state:
+    st.session_state.status_site = "FECHADO"
 
-# ---------------- LOGIN ----------------
+# ---------------- CABEÇALHO ----------------
 st.title("🚚 SPX | Consulta de Rotas")
-
-if not st.session_state.logado:
-    senha = st.text_input("Digite sua senha", type="password")
-
-    if st.button("Entrar"):
-        if senha == SENHA_MASTER:
-            st.session_state.logado = True
-            st.session_state.perfil = "MASTER"
-            st.rerun()
-
-        elif senha == SENHA_OPERACIONAL:
-            st.session_state.logado = True
-            st.session_state.perfil = "OPERACIONAL"
-            st.rerun()
-
-        else:
-            st.error("❌ Senha incorreta")
-
-    st.stop()
-
-# ---------------- ÁREA LOGADA ----------------
-st.success(f"Acesso autorizado ({st.session_state.perfil})")
+st.markdown("Consulta disponível **somente após a alocação das rotas**.")
 
 st.divider()
-st.subheader("⚙️ Área Administrativa")
 
-st.info(f"Status atual: **{st.session_state.status}**")
+# ===================== ÁREA DO USUÁRIO (SEMPRE VISÍVEL) =====================
+st.subheader("🔍 Consulta")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("🟢 ABRIR"):
-        st.session_state.status = "ABERTO"
-        st.success("Consulta ABERTA")
-
-with col2:
-    if st.button("🔴 FECHAR"):
-        st.session_state.status = "FECHADO"
-        st.warning("Consulta FECHADA")
-
-# ---------------- CONSULTA ----------------
-st.divider()
-st.subheader("📄 Consulta")
-
-if st.session_state.status == "FECHADO":
-    st.error("🚫 Consulta fechada no momento.")
+if st.session_state.status_site == "FECHADO":
+    st.warning("🚫 Consulta indisponível no momento.")
 else:
-    st.success("✅ Consulta aberta.")
-    st.write("Aqui entra a lógica da consulta de rotas.")
+    nome = st.text_input("Digite o nome do motorista")
+    if nome:
+        st.info("⚠️ Base ainda não conectada.")
 
-# ---------------- LOGOUT ----------------
-if st.button("Sair"):
-    st.session_state.clear()
-    st.rerun()
+# ===================== SIDEBAR ADMINISTRATIVA =====================
+with st.sidebar:
+    st.markdown("## 🔒 Área Administrativa")
+
+    senha = st.text_input("Senha administrativa", type="password")
+
+    if senha == SENHA_MASTER:
+        st.session_state.perfil = "MASTER"
+        st.success("Acesso MASTER")
+
+    elif senha == SENHA_OPERACIONAL:
+        st.session_state.perfil = "OPERACIONAL"
+        st.success("Acesso OPERACIONAL")
+
+    elif senha:
+        st.error("Senha incorreta")
+
+    # -------- PAINEL MASTER --------
+    if st.session_state.perfil == "MASTER":
+        st.markdown("---")
+        st.markdown("### ⚙️ Controles")
+
+        novo_status = st.radio(
+            "Status da Consulta",
+            ["ABERTO", "FECHADO"],
+            index=0 if st.session_state.status_site == "ABERTO" else 1
+        )
+
+        if st.button("Salvar Status"):
+            st.session_state.status_site = novo_status
+            st.success("Status atualizado")
+
+        if st.button("Sair"):
+            st.session_state.perfil = None
+            st.rerun()
+
+    # -------- PAINEL OPERACIONAL --------
+    if st.session_state.perfil == "OPERACIONAL":
+        st.markdown("---")
+        st.info("Perfil operacional não possui controles administrativos.")
+
+        if st.button("Sair"):
+            st.session_state.perfil = None
+            st.rerun()
