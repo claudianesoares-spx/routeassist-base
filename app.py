@@ -1,24 +1,22 @@
 import streamlit as st
 import pandas as pd
 
-# ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
+# ================== CONFIGURAÇÃO DA PÁGINA ==================
 st.set_page_config(
     page_title="SPX | Consulta de Rotas",
     page_icon="🚚",
     layout="centered"
 )
 
-# ---------------- SENHA ADMIN ----------------
+# ================== CONFIGURAÇÕES ==================
 SENHA_ADMIN = "LPA2026"
-
-# ---------------- LINK DA PLANILHA ----------------
 URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
 
-# ---------------- ESTADO DO SITE ----------------
+# ================== ESTADO DO SITE ==================
 if "status_site" not in st.session_state:
     st.session_state.status_site = "FECHADO"
 
-# ---------------- SIDEBAR (ADMIN DISCRETO) ----------------
+# ================== SIDEBAR (ADMIN DISCRETO) ==================
 with st.sidebar:
     st.markdown("## 🔐 Administração")
 
@@ -31,32 +29,32 @@ with st.sidebar:
             col1, col2 = st.columns(2)
 
             with col1:
-                if st.button("🟢 Abrir"):
+                if st.button("🟢 Abrir consulta"):
                     st.session_state.status_site = "ABERTO"
                     st.success("Consulta ABERTA")
 
             with col2:
-                if st.button("🔴 Fechar"):
+                if st.button("🔴 Fechar consulta"):
                     st.session_state.status_site = "FECHADO"
                     st.warning("Consulta FECHADA")
 
         elif senha:
             st.error("Senha incorreta")
 
-# ---------------- CABEÇALHO ----------------
+# ================== CABEÇALHO ==================
 st.title("🚚 SPX | Consulta de Rotas")
 st.markdown("Consulta disponível **somente após a alocação das rotas**.")
 st.divider()
 
-# ---------------- STATUS VISÍVEL ----------------
+# ================== STATUS ==================
 st.markdown(f"### 📌 Status atual: **{st.session_state.status_site}**")
 
-# ---------------- BLOQUEIO ----------------
+# ================== BLOQUEIO ==================
 if st.session_state.status_site == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
     st.stop()
 
-# ---------------- CARREGAR BASE ----------------
+# ================== CARREGAR BASE ==================
 @st.cache_data(ttl=300)
 def carregar_base():
     df = pd.read_excel(URL_PLANILHA)
@@ -65,14 +63,14 @@ def carregar_base():
 
 try:
     df = carregar_base()
-except:
+except Exception as e:
     st.error("Erro ao carregar a base de dados.")
     st.stop()
 
-# ---------------- CONSULTA ----------------
-st.markdown("### 🔍 Consulta")
+# ================== CONSULTA ==================
+st.markdown("### 🔍 Consulta de Rotas")
 
-nome = st.text_input("Digite o nome do motorista")
+nome = st.text_input("Digite o nome completo ou parcial do motorista")
 
 if nome:
     resultado = df[df["Nome"].str.contains(nome, case=False, na=False)]
@@ -81,4 +79,19 @@ if nome:
         st.warning("❌ Nenhuma rota atribuída para este motorista.")
     else:
         for _, r in resultado.iterrows():
-            st.success(f"🚚 Rota {r['Rota']} | {r['Nome']} | {r['Placa']}")
+            st.markdown(f"""
+            <div style="
+                background: white;
+                padding: 18px;
+                border-radius: 14px;
+                border-left: 6px solid #ff7a00;
+                margin-bottom: 14px;
+                box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            ">
+                <strong>🚚 Rota:</strong> {r['Rota']}<br>
+                <strong>👤 Motorista:</strong> {r['Nome']}<br>
+                <strong>🚗 Placa:</strong> {r['Placa']}<br>
+                <strong>🏙️ Cidade:</strong> {r['Cidade']}<br>
+                <strong>📍 Bairro:</strong> {r['Bairro']}
+            </div>
+            """, unsafe_allow_html=True)
