@@ -4,8 +4,6 @@ from datetime import datetime, timedelta
 import json
 import os
 import time
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
 # ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
 st.set_page_config(
@@ -16,6 +14,7 @@ st.set_page_config(
 
 # ---------------- ARQUIVOS ----------------
 CONFIG_FILE = "config.json"
+LOG_FILE = "logs.csv"
 
 # ---------------- CONFIG INICIAL ----------------
 def carregar_config():
@@ -36,52 +35,29 @@ def salvar_config(config):
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f)
 
-config = carregar_config()
-
-# ---------------- URL PLANILHA ----------------
-URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
-
-# ---------------- CARREGA PLANILHA DE ROTAS ----------------
-@st.cache_data(ttl=300)
-def carregar_base():
-    df = pd.read_excel(URL_PLANILHA)
-    df.columns = df.columns.str.strip()
-    df = df.fillna("")
-    return df
-
-df = carregar_base()
-
-# ---------------- AUTENTICAÇÃO GOOGLE SHEETS ----------------
-# Substitua 'service_account.json' pelo seu arquivo JSON da conta de serviço
-scope = ["https://spreadsheets.google.com/feeds", 
-         "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
-client = gspread.authorize(creds)
-sheet_logs = client.open_by_url(URL_PLANILHA).worksheet("Logs")
-
-# ---------------- FUNÇÃO DE LOG ONLINE ----------------
 def registrar_log(acao, nivel):
-    sheet_logs.append_row([
-        datetime.now().strftime("%d/%m/%Y"),
-        datetime.now().strftime("%H:%M:%S"),
-        acao,
-        nivel
-    ])
+    linha = {
+        "Data": datetime.now().strftime("%d/%m/%Y"),
+        "Hora": datetime.now().strftime("%H:%M:%S"),
+        "Ação": acao,
+        "Acesso": nivel
+    }
+    if not os.path.exists(LOG_FILE):
+        pd.DataFrame([linha]).to_csv(LOG_FILE, index=False)
+    else:
+        pd.DataFrame([linha]).to_csv(LOG_FILE, mode="a", header=False, index=False)
+
+config = carregar_config()
 
 # ---------------- LIMPEZA AUTOMÁTICA DE LOGS (3 DIAS) ----------------
 def limpar_logs_3_dias():
-    all_logs = sheet_logs.get_all_records()
-    if not all_logs:
+    if not os.path.exists(LOG_FILE):
         return
-    df_logs = pd.DataFrame(all_logs)
-    df_logs['Data'] = pd.to_datetime(df_logs['Data'], format="%d/%m/%Y")
+    df = pd.read_csv(LOG_FILE)
+    df['Data'] = pd.to_datetime(df['Data'], format="%d/%m/%Y")
     limite = datetime.now() - timedelta(days=3)
-    df_limpo = df_logs[df_logs['Data'] >= limite]
-    # Limpa aba e rescreve apenas logs recentes
-    sheet_logs.clear()
-    sheet_logs.append_row(["Data", "Hora", "Ação", "Acesso"])  # cabeçalho
-    for _, row in df_limpo.iterrows():
-        sheet_logs.append_row([row['Data'].strftime("%d/%m/%Y"), row['Hora'], row['Ação'], row['Acesso']])
+    df_limpo = df[df['Data'] >= limite]
+    df_limpo.to_csv(LOG_FILE, index=False)
 
 limpar_logs_3_dias()
 
@@ -127,8 +103,20 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---------------- LOGIN E SENHAS TEMPORÁRIAS ----------------
-temporary_passwords = {}  # {senha_temp: expira_timestamp}
+# ---------------- URL PLANILHA ----------------
+URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
+
+@st.cache_data(ttl=300)
+def carregar_base():
+    df = pd.read_excel(URL_PLANILHA)
+    df.columns = df.columns.str.strip()
+    df = df.fillna("")
+    return df
+
+df = carregar_base()
+
+# ---------------- LOGIN ----------------
+temporary_passwords = {}  # reservado caso queira no futuro
 
 with st.sidebar:
     st.markdown("## 🔒 Área Administrativa")
@@ -147,8 +135,6 @@ with st.sidebar:
         nivel = "MASTER"
     elif senha == config["senha_operacional"]:
         nivel = "OPERACIONAL"
-    elif senha in temporary_passwords:
-        nivel = "TEMP"
 
     if nivel:
         st.success(f"Acesso {nivel}")
@@ -166,7 +152,6 @@ with st.sidebar:
             registrar_log("Consulta FECHADA", nivel)
             st.rerun()
 
-        # ---------------- MASTER ONLY ----------------
         if nivel == "MASTER":
             st.markdown("---")
             st.markdown("### 🔑 Gerenciar Senhas")
@@ -184,22 +169,14 @@ with st.sidebar:
                 st.success("Senha master atualizada")
 
             st.markdown("---")
-            st.markdown("### 🔑 Criar senha temporária")
-            temp_senha = st.text_input("Senha temporária")
-            temp_dur = st.number_input("Duração (minutos)", min_value=1, max_value=1440, value=30)
-            if st.button("Gerar senha temporária") and temp_senha:
-                temporary_passwords[temp_senha] = time.time() + temp_dur * 60
-                registrar_log(f"Senha temporária '{temp_senha}' criada por {temp_dur} min", nivel)
-                st.success(f"Senha temporária '{temp_senha}' criada por {temp_dur} min.")
-
-            st.markdown("---")
             st.markdown("### 📜 Histórico")
-            st.dataframe(pd.DataFrame(sheet_logs.get_all_records()), use_container_width=True)
+            if os.path.exists(LOG_FILE):
+                st.dataframe(pd.read_csv(LOG_FILE), use_container_width=True)
 
     elif senha:
         st.error("Senha incorreta")
 
-# ---------------- BLOQUEIO USUÁRIO COMUM ----------------
+# ---------------- BLOQUEIO USUÁRIO ----------------
 if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta temporariamente indisponível.")
     st.stop()
