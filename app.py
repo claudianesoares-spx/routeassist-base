@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import os
+import json
 
 # ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
 st.set_page_config(
@@ -22,20 +23,24 @@ def carregar_config():
             "senha_operacional": "LPA2026",
             "status_site": "ABERTO"
         }
-        with open(CONFIG_FILE, "w") as f:
-            import json
-            json.dump(config, f)
+        salvar_config(config)
     else:
-        import json
-        with open(CONFIG_FILE, "r") as f:
-            config = json.load(f)
-        config.setdefault("senha_master", "MASTER2026")
-        config.setdefault("senha_operacional", "LPA2026")
-        config.setdefault("status_site", "ABERTO")
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                config = json.load(f)
+        except:
+            config = {
+                "senha_master": "MASTER2026",
+                "senha_operacional": "LPA2026",
+                "status_site": "ABERTO"
+            }
+    # Garantir que todas as chaves existem
+    config.setdefault("senha_master", "MASTER2026")
+    config.setdefault("senha_operacional", "LPA2026")
+    config.setdefault("status_site", "ABERTO")
     return config
 
 def salvar_config(config):
-    import json
     with open(CONFIG_FILE, "w") as f:
         json.dump(config, f)
 
@@ -54,7 +59,7 @@ def registrar_log(acao, nivel):
     else:
         pd.DataFrame([linha]).to_csv(LOG_FILE, mode="a", header=False, index=False)
 
-# ---------------- LIMPEZA AUTOMÁTICA DE LOGS (3 DIAS) ----------------
+# ---------------- LIMPEZA DE LOGS (3 DIAS) ----------------
 def limpar_logs_3_dias():
     if not os.path.exists(LOG_FILE):
         return
@@ -118,16 +123,21 @@ with st.sidebar:
         st.success(f"Acesso {nivel}")
         st.markdown(f"**🚦 Status:** `{config['status_site']}`")
         col1, col2 = st.columns(2)
-        if col1.button("🟢 Abrir"):
-            config["status_site"] = "ABERTO"
-            salvar_config(config)
-            registrar_log("Consulta ABERTA", nivel)
-            st.experimental_rerun()
-        if col2.button("🔴 Fechar"):
-            config["status_site"] = "FECHADO"
-            salvar_config(config)
-            registrar_log("Consulta FECHADA", nivel)
-            st.experimental_rerun()
+
+        try:
+            if col1.button("🟢 Abrir"):
+                config["status_site"] = "ABERTO"
+                salvar_config(config)
+                registrar_log("Consulta ABERTA", nivel)
+                st.experimental_rerun()
+
+            if col2.button("🔴 Fechar"):
+                config["status_site"] = "FECHADO"
+                salvar_config(config)
+                registrar_log("Consulta FECHADA", nivel)
+                st.experimental_rerun()
+        except:
+            st.warning("Erro temporário ao atualizar status. Recarregue o app.")
 
         if nivel == "MASTER":
             st.markdown("---")
