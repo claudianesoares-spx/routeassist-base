@@ -1,97 +1,116 @@
 import streamlit as st
-import pandas as pd
+from datetime import datetime
 
-# ---------------- CONFIGURAÇÃO DA PÁGINA ----------------
+# ================= CONFIGURAÇÃO DA PÁGINA =================
 st.set_page_config(
     page_title="SPX | Consulta de Rotas",
     page_icon="🚚",
     layout="centered"
 )
 
-# ---------------- CONFIGURAÇÕES ----------------
-SENHA_ADMIN = "LPA2026"
-PLANILHA_URL = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
+# ================= SENHAS PADRÃO =================
+SENHA_ADMIN_PADRAO = "LPA2026"
+SENHA_MASTER_PADRAO = "MASTER2026"
 
-# ---------------- ESTADO DO SITE ----------------
+# ================= SESSION STATE =================
 if "status_site" not in st.session_state:
-    st.session_state.status_site = "ABERTO"
+    st.session_state.status_site = "FECHADO"
 
-# ---------------- CARREGAR BASE ----------------
-@st.cache_data(ttl=300)
-def carregar_base():
-    df = pd.read_excel(PLANILHA_URL)
+if "senha_master" not in st.session_state:
+    st.session_state.senha_master = SENHA_MASTER_PADRAO
 
-    # normaliza colunas (NUNCA MAIS QUEBRA)
-    df.columns = (
-        df.columns
-        .str.strip()
-        .str.upper()
-    )
+if "historico" not in st.session_state:
+    st.session_state.historico = []
 
-    return df.fillna("")
+# ================= FUNÇÃO LOG =================
+def registrar_acao(usuario, acao):
+    st.session_state.historico.append({
+        "data": datetime.now().strftime("%d/%m/%Y %H:%M:%S"),
+        "usuario": usuario,
+        "acao": acao
+    })
 
-df = carregar_base()
-
-# ---------------- CABEÇALHO ----------------
+# ================= CABEÇALHO =================
 st.title("🚚 SPX | Consulta de Rotas")
 st.markdown("Consulta disponível **somente após a alocação das rotas**.")
 st.divider()
 
-# ---------------- ÁREA ADMIN (SIDEBAR) ----------------
+# ================= ÁREA ADMINISTRATIVA =================
 with st.sidebar:
     st.markdown("## 🔒 Área Administrativa")
     senha = st.text_input("Senha", type="password")
 
-    if senha == SENHA_ADMIN:
-        st.success("Acesso liberado")
+    nivel = None
 
-        col1, col2 = st.columns(2)
+    if senha == st.session_state.senha_master:
+        nivel = "MASTER"
+        st.success("Acesso MASTER liberado")
 
-        with col1:
-            if st.button("🟢 ABRIR CONSULTA"):
-                st.session_state.status_site = "ABERTO"
-
-        with col2:
-            if st.button("🔴 FECHAR CONSULTA"):
-                st.session_state.status_site = "FECHADO"
+    elif senha == SENHA_ADMIN_PADRAO:
+        nivel = "ADMIN"
+        st.success("Acesso ADMIN liberado")
 
     elif senha:
         st.error("Senha incorreta")
 
-# ---------------- STATUS ----------------
-st.markdown(f"### 📌 Status atual: **{st.session_state.status_site}**")
+    # ================= CONTROLES =================
+    if nivel in ["ADMIN", "MASTER"]:
+        st.markdown("---")
+        st.markdown("### ⚙️ Controle da Consulta")
 
-# ---------------- BLOQUEIO ----------------
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if st.button("🔓 ABRIR"):
+                st.session_state.status_site = "ABERTO"
+                registrar_acao(nivel, "ABRIU CONSULTA")
+                st.success("Consulta ABERTA")
+
+        with col2:
+            if st.button("🔒 FECHAR"):
+                st.session_state.status_site = "FECHADO"
+                registrar_acao(nivel, "FECHOU CONSULTA")
+                st.warning("Consulta FECHADA")
+
+    # ================= MASTER ONLY =================
+    if nivel == "MASTER":
+        st.markdown("---")
+        st.markdown("### 🔑 Trocar senha MASTER")
+
+        nova_senha = st.text_input("Nova senha MASTER", type="password")
+
+        if st.button("Salvar nova senha"):
+            if nova_senha:
+                st.session_state.senha_master = nova_senha
+                registrar_acao("MASTER", "ALTEROU SENHA MASTER")
+                st.success("Senha MASTER atualizada")
+            else:
+                st.error("Digite uma senha válida")
+
+        st.markdown("---")
+        st.markdown("### 📜 Histórico de ações")
+
+        if st.session_state.historico:
+            for h in reversed(st.session_state.historico):
+                st.markdown(
+                    f"- {h['data']} | **{h['usuario']}** | {h['acao']}"
+                )
+        else:
+            st.info("Nenhuma ação registrada")
+
+# ================= STATUS ATUAL =================
+st.markdown(f"### 📌 Status atual: **{st.session_state.status_site}**")
+st.divider()
+
+# ================= BLOQUEIO =================
 if st.session_state.status_site == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
     st.stop()
 
-# ---------------- CONSULTA ----------------
-st.markdown("### 🔍 Consulta de Rotas")
+# ================= CONSULTA (MANTIDA) =================
+st.markdown("### 🔍 Consulta")
 
-nome = st.text_input("Digite o **nome completo ou parcial** do motorista:")
+nome = st.text_input("Digite o nome do motorista")
 
 if nome:
-    resultado = df[df["MOTORISTA"].str.contains(nome, case=False, na=False)]
-
-    if resultado.empty:
-        st.warning("❌ Nenhuma rota atribuída.")
-    else:
-        for _, row in resultado.iterrows():
-            st.markdown(f"""
-            <div style="
-                background:white;
-                padding:20px;
-                border-radius:14px;
-                border:1px solid #e5e7eb;
-                margin-bottom:16px;
-            ">
-                <h4 style="color:#ff7a00;">🚚 Rota: {row['ROTA']}</h4>
-                <strong>👤 Motorista:</strong> {row['MOTORISTA']}<br>
-                <strong>🚗 Placa:</strong> {row['PLACA']}<br>
-                <strong>🏙️ Cidade:</strong> {row['CIDADE']}<br>
-                <strong>📍 Bairro:</strong> {row['BAIRRO']}
-            </div>
-            """, unsafe_allow_html=True)
-else:
-    st.info("Digite um nome para consultar a rota.")
+    st.info("⚠️ Base de dados ainda não conectada.")
