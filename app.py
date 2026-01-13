@@ -45,6 +45,13 @@ def registrar_acao(usuario, acao):
     })
     save_config(config)
 
+# ================= REGRA DE HORÁRIO (10:05) =================
+agora = datetime.now()
+liberar_dobra = (
+    agora.hour > 10 or
+    (agora.hour == 10 and agora.minute >= 5)
+)
+
 # ================= ESTILO =================
 st.markdown("""
 <style>
@@ -137,6 +144,14 @@ if id_motorista:
     # ================= BUSCA POR ID =================
     resultado = df[df["ID"] == id_motorista]
 
+    # ================= ROTAS DISPONÍVEIS =================
+    rotas_disponiveis = df[
+        df["ID"].isna() |
+        (df["ID"] == "") |
+        (df["ID"].str.lower() == "nan") |
+        (df["ID"] == "-")
+    ]
+
     # ===== CASO 1: DRIVER COM ROTA =====
     if not resultado.empty:
         for _, row in resultado.iterrows():
@@ -150,29 +165,16 @@ if id_motorista:
             </div>
             """, unsafe_allow_html=True)
 
-    # ===== CASO 2: DRIVER SEM ROTA =====
-    else:
-        st.info("ℹ️ No momento você não possui rota atribuída.")
-        st.markdown("### 📦 Regiões com rotas disponíveis")
+        # 🔓 LIBERA ROTAS DISPONÍVEIS APÓS 10:05
+        if liberar_dobra and not rotas_disponiveis.empty:
+            st.divider()
+            st.markdown("### 📦 Rotas disponíveis")
 
-        rotas_disponiveis = df[
-            df["ID"].isna() |
-            (df["ID"] == "") |
-            (df["ID"].str.lower() == "nan") |
-            (df["ID"] == "-")
-        ]
-
-        if rotas_disponiveis.empty:
-            st.warning("🚫 No momento não há rotas disponíveis.")
-        else:
-            # ===== ORGANIZAÇÃO POR CIDADE =====
             cidades = rotas_disponiveis["Cidade"].unique()
             for cidade in cidades:
                 with st.expander(f"🏙️ {cidade}"):
                     rotas_cidade = rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade]
                     for _, row in rotas_cidade.iterrows():
-
-                        # 🔴 ÚNICA ALTERAÇÃO CONTROLADA: COMPLEMENTO DO FORM_URL
                         form_url = (
                             "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
                             f"?usp=pp_url"
@@ -185,7 +187,42 @@ if id_motorista:
                             f"&entry.1534916252=Tenho+Interesse"
                         )
 
-                        # Mantendo exatamente o mesmo estilo Shopee
+                        st.markdown(f"""
+                        <div class="card">
+                            <p>🏙️ <strong>Cidade:</strong> {row['Cidade']}</p>
+                            <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
+                            <p>🚗 <strong>Tipo Veículo:</strong> {row.get('Tipo Veiculo', 'Não informado')}</p>
+                            <a href="{form_url}" target="_blank">
+                                👉 Tenho interesse nesta rota
+                            </a>
+                        </div>
+                        """, unsafe_allow_html=True)
+
+    # ===== CASO 2: DRIVER SEM ROTA =====
+    else:
+        st.info("ℹ️ No momento você não possui rota atribuída.")
+        st.markdown("### 📦 Regiões com rotas disponíveis")
+
+        if rotas_disponiveis.empty:
+            st.warning("🚫 No momento não há rotas disponíveis.")
+        else:
+            cidades = rotas_disponiveis["Cidade"].unique()
+            for cidade in cidades:
+                with st.expander(f"🏙️ {cidade}"):
+                    rotas_cidade = rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade]
+                    for _, row in rotas_cidade.iterrows():
+                        form_url = (
+                            "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
+                            f"?usp=pp_url"
+                            f"&entry.392776957={id_motorista}"
+                            f"&entry.1682939517={row['Rota']}"
+                            f"&entry.2002352354={row['Placa']}"
+                            f"&entry.1100254277={row.get('Tipo Veiculo', '')}"
+                            f"&entry.625563351={row['Cidade']}"
+                            f"&entry.1284288730={row['Bairro']}"
+                            f"&entry.1534916252=Tenho+Interesse"
+                        )
+
                         st.markdown(f"""
                         <div class="card">
                             <p>🏙️ <strong>Cidade:</strong> {row['Cidade']}</p>
