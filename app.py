@@ -63,6 +63,9 @@ st.markdown("""
     border-left: 6px solid #ff7a00;
     margin-bottom: 16px;
 }
+.card h4 {
+    margin-bottom: 12px;
+}
 .card p {
     margin: 4px 0;
     font-size: 15px;
@@ -82,44 +85,52 @@ st.title("🚚 SPX | Consulta de Rotas")
 st.markdown("Consulta disponível **somente após a alocação das rotas**.")
 st.divider()
 
-# ================= SIDEBAR =================
+# ================= SIDEBAR / ADMIN =================
 with st.sidebar:
-    with st.expander("🔒 Área Administrativa"):
+    with st.expander("🔒 Área Administrativa", expanded=False):
+
         senha = st.text_input("Senha", type="password")
         nivel = None
 
         if senha == config["senha_master"]:
             nivel = "MASTER"
             st.success("Acesso MASTER liberado")
+
         elif senha == "LPA2026":
             nivel = "ADMIN"
             st.success("Acesso ADMIN liberado")
+
         elif senha:
             st.error("Senha incorreta")
 
-        if nivel:
+        if nivel in ["ADMIN", "MASTER"]:
+            st.markdown("---")
             col1, col2 = st.columns(2)
+
             with col1:
                 if st.button("🔓 ABRIR"):
                     config["status_site"] = "ABERTO"
                     registrar_acao(nivel, "ABRIU CONSULTA")
                     st.success("Consulta ABERTA")
+
             with col2:
                 if st.button("🔒 FECHAR"):
                     config["status_site"] = "FECHADO"
                     registrar_acao(nivel, "FECHOU CONSULTA")
                     st.warning("Consulta FECHADA")
 
-# ================= STATUS =================
+# ================= STATUS ATUAL =================
 st.markdown(f"### 📌 Status atual: **{config['status_site']}**")
 st.divider()
 
+# ================= BLOQUEIO =================
 if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
     st.stop()
 
 # ================= CONSULTA =================
 st.markdown("### 🔍 Consulta de Rotas")
+
 id_motorista = st.text_input("Digite seu ID de motorista")
 
 if id_motorista:
@@ -127,7 +138,6 @@ if id_motorista:
     df = pd.read_excel(url)
 
     df["ID"] = df["ID"].astype(str).str.strip()
-    df["Tipo Veiculo"] = df["Tipo Veiculo"].astype(str).str.upper().str.strip()
     id_motorista = id_motorista.strip()
 
     resultado = df[df["ID"] == id_motorista]
@@ -156,31 +166,28 @@ if id_motorista:
             st.divider()
             st.markdown("### 📦 Rotas disponíveis")
 
-            for tipo, emoji in [("CARRO", "🚗"), ("MOTO", "🏍️")]:
-                grupo = rotas_disponiveis[rotas_disponiveis["Tipo Veiculo"] == tipo]
-                if grupo.empty:
-                    continue
+            cidades = rotas_disponiveis["Cidade"].unique()
+            for cidade in cidades:
+                with st.expander(f"🏙️ {cidade}"):
+                    for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
+                        form_url = (
+                            "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
+                            f"?usp=pp_url"
+                            f"&entry.392776957={id_motorista}"
+                            f"&entry.1682939517={row['Rota']}"
+                            f"&entry.2002352354={row['Placa']}"
+                            f"&entry.1100254277={row.get('Tipo Veiculo', '')}"
+                            f"&entry.625563351={row['Cidade']}"
+                            f"&entry.1284288730={row['Bairro']}"
+                            f"&entry.1534916252=Tenho+Interesse"
+                        )
 
-                st.markdown(f"## {emoji} Rotas para {tipo}")
-
-                for cidade in grupo["Cidade"].unique():
-                    with st.expander(f"🏙️ {cidade}"):
-                        for _, row in grupo[grupo["Cidade"] == cidade].iterrows():
-                            form_url = (
-                                "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
-                                f"?usp=pp_url"
-                                f"&entry.392776957={id_motorista}"
-                                f"&entry.1682939517={row['Rota']}"
-                                f"&entry.2002352354={row['Placa']}"
-                                f"&entry.1100254277={row['Tipo Veiculo']}"
-                                f"&entry.625563351={row['Cidade']}"
-                                f"&entry.1284288730={row['Bairro']}"
-                                f"&entry.1534916252=Tenho+Interesse"
-                            )
-
-                            st.markdown(f"""
-                            <div class="card">
-                                <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
-                                <a href="{form_url}" target="_blank">👉 Tenho interesse nesta rota</a>
-                            </div>
-                            """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div class="card">
+                            <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
+                            <p>🚗 <strong>Tipo Veículo:</strong> {row.get('Tipo Veiculo', 'Não informado')}</p>
+                            <a href="{form_url}" target="_blank">
+                                👉 Tenho interesse nesta rota
+                            </a>
+                        </div>
+                        """, unsafe_allow_html=True)
