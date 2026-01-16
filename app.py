@@ -144,13 +144,14 @@ if id_motorista:
     df["ID"] = df["ID"].astype(str).str.strip()
 
     # ===== BASE DE DRIVERS ATIVOS =====
-    df_drivers = pd.read_excel(
-        url,
-        sheet_name="DRIVERS ATIVOS",
-        dtype=str
-    )
+    df_drivers = pd.read_excel(url, sheet_name="DRIVERS ATIVOS", dtype=str)
     df_drivers["ID"] = df_drivers["ID"].str.strip()
     ids_ativos = set(df_drivers["ID"].dropna())
+
+    # ===== BASE DE INTERESSE (CLIQUE POR ROTA) =====
+    df_interesse = pd.read_excel(url, sheet_name="INTERESSE", dtype=str)
+    df_interesse["ID"] = df_interesse["ID"].str.strip()
+    df_interesse["Controle"] = df_interesse["Controle"].str.strip()
 
     id_motorista = id_motorista.strip()
 
@@ -190,10 +191,21 @@ if id_motorista:
 
             for cidade in rotas_disponiveis["Cidade"].unique():
                 with st.expander(f"🏙️ {cidade}"):
-                    for _, row in rotas_disponiveis[
-                        rotas_disponiveis["Cidade"] == cidade
-                    ].iterrows():
+                    for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
+                        
+                        # ===== VERIFICA SE MOTORISTA JÁ CLICOU =====
+                        controle_id = f"{id_motorista}_{row['Rota']}"
+                        if controle_id in df_interesse["Controle"].values:
+                            st.markdown(f"""
+                            <div class="card">
+                                <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
+                                <p>🚗 <strong>Tipo Veículo:</strong> {row.get('Tipo Veiculo', 'Não informado')}</p>
+                                <p>✅ Solicitação já registrada. Aguarde análise.</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            continue
 
+                        # ===== FORMULÁRIO =====
                         form_url = (
                             "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
                             f"?usp=pp_url"
@@ -226,10 +238,21 @@ if id_motorista:
         else:
             for cidade in rotas_disponiveis["Cidade"].unique():
                 with st.expander(f"🏙️ {cidade}"):
-                    for _, row in rotas_disponiveis[
-                        rotas_disponiveis["Cidade"] == cidade
-                    ].iterrows():
+                    for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
 
+                        # ===== VERIFICA SE MOTORISTA JÁ CLICOU =====
+                        controle_id = f"{id_motorista}_{row['Rota']}"
+                        if controle_id in df_interesse["Controle"].values:
+                            st.markdown(f"""
+                            <div class="card">
+                                <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
+                                <p>🚗 <strong>Tipo Veículo:</strong> {row.get('Tipo Veiculo', 'Não informado')}</p>
+                                <p>✅ Solicitação já registrada. Aguarde análise.</p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            continue
+
+                        # ===== FORMULÁRIO =====
                         form_url = (
                             "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
                             f"?usp=pp_url"
