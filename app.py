@@ -91,6 +91,7 @@ st.divider()
 # ================= SIDEBAR / ADMIN =================
 with st.sidebar:
     with st.expander("🔒 Área Administrativa", expanded=False):
+
         senha = st.text_input("Senha", type="password")
         nivel = None
 
@@ -155,8 +156,10 @@ if id_motorista:
         )
         st.stop()
 
+    # ===== RESULTADOS DO MOTORISTA =====
     resultado = df[df["ID"] == id_motorista]
 
+    # ===== ROTAS DISPONÍVEIS =====
     rotas_disponiveis = df[
         df["ID"].isna() |
         (df["ID"] == "") |
@@ -180,9 +183,12 @@ if id_motorista:
         if liberar_dobra and not rotas_disponiveis.empty:
             st.divider()
             st.markdown("### 📦 Rotas disponíveis")
+
             for cidade in rotas_disponiveis["Cidade"].unique():
                 with st.expander(f"🏙️ {cidade}"):
                     for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
+
+                        # ===== FORMULÁRIO DE INTERESSE =====
                         form_url = (
                             "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
                             f"?usp=pp_url"
@@ -194,6 +200,7 @@ if id_motorista:
                             f"&entry.1284288730={row['Bairro']}"
                             f"&entry.1534916252=Tenho+Interesse"
                         )
+
                         st.markdown(f"""
                         <div class="card">
                             <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
@@ -208,12 +215,14 @@ if id_motorista:
     else:
         st.info("ℹ️ No momento você não possui rota atribuída.")
         st.markdown("### 📦 Regiões com rotas disponíveis")
+
         if rotas_disponiveis.empty:
             st.warning("🚫 No momento não há rotas disponíveis.")
         else:
             for cidade in rotas_disponiveis["Cidade"].unique():
                 with st.expander(f"🏙️ {cidade}"):
                     for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
+
                         form_url = (
                             "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
                             f"?usp=pp_url"
@@ -225,6 +234,7 @@ if id_motorista:
                             f"&entry.1284288730={row['Bairro']}"
                             f"&entry.1534916252=Tenho+Interesse"
                         )
+
                         st.markdown(f"""
                         <div class="card">
                             <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
@@ -236,11 +246,14 @@ if id_motorista:
                         """, unsafe_allow_html=True)
 
 # ================= ASSINATURA =================
-st.markdown("""
-<hr>
-<div style="text-align: center; color: #888; font-size: 0.85em;">
-    <strong>RouteAssist</strong><br>
-    Concept & Development — Claudiane Vieira<br>
-    Since Dec/2025
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <hr>
+    <div style="text-align: center; color: #888; font-size: 0.85em;">
+        <strong>RouteAssist</strong><br>
+        Concept & Development — Claudiane Vieira<br>
+        Since Dec/2025
+    </div>
+    """,
+    unsafe_allow_html=True
+)
