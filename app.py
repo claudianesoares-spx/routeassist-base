@@ -11,9 +11,9 @@ st.set_page_config(
     layout="centered"
 )
 
-# ================= CACHE (60s) =================
+# ================= CACHE (SOMENTE ADMIN | 60s) =================
 @st.cache_data(ttl=60, show_spinner=False)
-def carregar_rotas(url):
+def carregar_rotas_admin(url):
     df = pd.read_excel(url)
     df["ID"] = df["ID"].astype(str).str.strip()
     return df
@@ -70,9 +70,19 @@ st.markdown("""
     border-left: 6px solid #ff7a00;
     margin-bottom: 16px;
 }
+.card h4 {
+    margin-bottom: 12px;
+}
 .card p {
     margin: 4px 0;
     font-size: 15px;
+}
+.card a {
+    display: inline-block;
+    margin-top: 10px;
+    color: #ff7a00;
+    font-weight: bold;
+    text-decoration: none;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -86,11 +96,12 @@ st.markdown(
 st.divider()
 
 # ================= SIDEBAR / ADMIN =================
+nivel = None
+
 with st.sidebar:
     with st.expander("🔒 Área Administrativa", expanded=False):
 
         senha = st.text_input("Senha", type="password")
-        nivel = None
 
         if senha == config["senha_master"]:
             nivel = "MASTER"
@@ -121,11 +132,11 @@ with st.sidebar:
 st.markdown(f"### 📌 Status atual: **{config['status_site']}**")
 st.divider()
 
-# ================= PAINEL OPERACIONAL ADMIN =================
+# ================= PAINEL OPERACIONAL (ADMIN ONLY) =================
 if nivel in ["ADMIN", "MASTER"]:
 
     url_rotas = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
-    df_admin = carregar_rotas(url_rotas)
+    df_admin = carregar_rotas_admin(url_rotas)
 
     rotas_disponiveis_admin = df_admin[
         df_admin["ID"].isna() |
@@ -147,11 +158,7 @@ if nivel in ["ADMIN", "MASTER"]:
     c2.metric("✅ Atribuídas", len(df_admin) - len(rotas_disponiveis_admin))
     c3.metric("📦 Disponíveis", len(rotas_disponiveis_admin))
 
-    st.markdown("### 📦 Rotas disponíveis no momento")
-
-    if rotas_disponiveis_admin.empty:
-        st.success("Nenhuma rota disponível 🎉")
-    else:
+    if not rotas_disponiveis_admin.empty:
         st.dataframe(
             rotas_disponiveis_admin[
                 ["Rota", "Cidade", "Bairro", "Tipo Veiculo"]
@@ -167,6 +174,9 @@ if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
     st.stop()
 
-# ================= CONSULTA DRIVER =================
+# ================= CONSULTA DRIVER (ORIGINAL / SEM CACHE) =================
 st.markdown("### 🔍 Consulta Operacional de Rotas")
 id_motorista = st.text_input("Digite seu ID de motorista")
+
+# 🔒 A PARTIR DAQUI: É EXATAMENTE O SEU CÓDIGO ORIGINAL
+# (sem cache, sem painel, sem alteração)
