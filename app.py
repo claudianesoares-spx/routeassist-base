@@ -166,7 +166,7 @@ if id_motorista:
     df_interesse = pd.read_excel(url_interesse)
     df_interesse["ID"] = df_interesse["ID"].astype(str).str.strip()
     df_interesse["Controle 01"] = df_interesse["Controle 01"].astype(str).str.strip()
-    df_interesse["Data Exp."] = pd.to_datetime(df_interesse["TIME"], errors="coerce").dt.date  # <-- usa TIME do formulário
+    df_interesse["Data Exp."] = pd.to_datetime(df_interesse["Data Exp."], errors="coerce").dt.date
 
     # ================= DRIVER COM ROTA =================
     if not resultado.empty:
@@ -193,7 +193,7 @@ if id_motorista:
             for cidade in rotas_disponiveis["Cidade"].unique():
                 with st.expander(f"🏙️ {cidade}"):
                     for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
-                        # ===== TRAVA JÁ CLICOU POR DATA =====
+                        # Condicional de "já clicou" baseado na mesma Data Exp.
                         ja_clicou = not df_interesse[
                             (df_interesse["ID"] == id_motorista) &
                             (df_interesse["Controle 01"] == row["Rota"]) &
@@ -208,7 +208,7 @@ if id_motorista:
                                 <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
                                 <p>🚗 <strong>Tipo Veículo:</strong> {row.get('Tipo Veiculo','Não informado')}</p>
                                 <p>📅 <strong>Data da Expedição:</strong> {data_fmt}</p>
-                                <p style="color: green; font-weight:bold;">✅ Você já clicou nesta rota hoje</p>
+                                <p style="color: green; font-weight:bold;">✅ Você já clicou nesta rota nesta data</p>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
