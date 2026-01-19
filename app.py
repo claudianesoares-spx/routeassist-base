@@ -63,8 +63,13 @@ st.markdown("""
     border-left: 6px solid #ff7a00;
     margin-bottom: 16px;
 }
-.card h4 { margin-bottom: 12px; }
-.card p { margin: 4px 0; font-size: 15px; }
+.card h4 {
+    margin-bottom: 12px;
+}
+.card p {
+    margin: 4px 0;
+    font-size: 15px;
+}
 .card a {
     display: inline-block;
     margin-top: 10px;
@@ -83,7 +88,7 @@ st.markdown(
 )
 st.divider()
 
-# ================= SIDEBAR =================
+# ================= SIDEBAR / ADMIN =================
 with st.sidebar:
     with st.expander("🔒 Área Administrativa", expanded=False):
 
@@ -100,56 +105,68 @@ with st.sidebar:
             st.error("Senha incorreta")
 
         if nivel in ["ADMIN", "MASTER"]:
+            st.markdown("---")
             col1, col2 = st.columns(2)
+
             with col1:
                 if st.button("🔓 ABRIR"):
                     config["status_site"] = "ABERTO"
                     registrar_acao(nivel, "ABRIU CONSULTA")
                     st.success("Consulta ABERTA")
+
             with col2:
                 if st.button("🔒 FECHAR"):
                     config["status_site"] = "FECHADO"
                     registrar_acao(nivel, "FECHOU CONSULTA")
                     st.warning("Consulta FECHADA")
 
-# ================= STATUS =================
+# ================= STATUS ATUAL =================
 st.markdown(f"### 📌 Status atual: **{config['status_site']}**")
 st.divider()
 
+# ================= BLOQUEIO =================
 if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
     st.stop()
 
 # ================= CONSULTA =================
 st.markdown("### 🔍 Consulta Operacional de Rotas")
-id_motorista = st.text_input("Digite seu ID de motorista").strip()
+id_motorista = st.text_input("Digite seu ID de motorista")
 
 if id_motorista:
     url_rotas = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
     url_interesse = "https://docs.google.com/spreadsheets/d/1ux9UP_oJ9VTCTB_YMpvHr1VEPpFHdIBY2pudgehtTIE/export?format=xlsx"
 
-    # ===== BASE ROTAS =====
+    # ===== BASE DE ROTAS =====
     df = pd.read_excel(url_rotas)
     df["ID"] = df["ID"].astype(str).str.strip()
     df["Data Exp."] = pd.to_datetime(df["Data Exp."], errors="coerce").dt.date
 
-    # ===== DRIVERS ATIVOS =====
+    # ===== BASE DE DRIVERS ATIVOS =====
     df_drivers = pd.read_excel(url_rotas, sheet_name="DRIVERS ATIVOS", dtype=str)
     df_drivers["ID"] = df_drivers["ID"].str.strip()
     ids_ativos = set(df_drivers["ID"].dropna())
 
+    id_motorista = id_motorista.strip()
+
+    # ===== VALIDAÇÃO DO ID =====
     if id_motorista not in ids_ativos:
         st.error("❌ ID incorreto, favor verificar.")
         st.stop()
 
+    # ===== RESULTADO MOTORISTA =====
     resultado = df[df["ID"] == id_motorista]
 
+    # ===== ROTAS DISPONÍVEIS =====
     rotas_disponiveis = df[
-        df["ID"].isna() | (df["ID"] == "") | (df["ID"] == "-")
+        df["ID"].isna() |
+        (df["ID"] == "") |
+        (df["ID"].str.lower() == "nan") |
+        (df["ID"] == "-")
     ]
 
-    # ===== INTERESSE =====
-    df_interesse = pd.read_excel(url_interesse, sheet_name="Time")
+    # ===== PLANILHA INTERESSE (FORM) =====
+    df_interesse = pd.read_excel(url_interesse)
     df_interesse["ID"] = df_interesse["ID"].astype(str).str.strip()
     df_interesse["Time"] = df_interesse["Time"].astype(str).str.strip()
     df_interesse["Data Exp."] = pd.to_datetime(
@@ -159,8 +176,11 @@ if id_motorista:
     # ===== DRIVER COM ROTA =====
     if not resultado.empty:
         for _, row in resultado.iterrows():
-            data_exp = row["Data Exp."]
-            data_fmt = data_exp.strftime("%d/%m/%Y") if pd.notna(data_exp) else "-"
+            data_fmt = (
+                row["Data Exp."].strftime("%d/%m/%Y")
+                if pd.notna(row["Data Exp."])
+                else "-"
+            )
 
             st.markdown(f"""
             <div class="card">
@@ -177,29 +197,40 @@ if id_motorista:
             st.divider()
             st.markdown("### 📦 Rotas disponíveis")
 
-            for _, row in rotas_disponiveis.iterrows():
-                ja_clicou = not df_interesse[
-                    (df_interesse["ID"] == id_motorista) &
-                    (df_interesse["Time"] == row["Rota"]) &
-                    (df_interesse["Data Exp."] == row["Data Exp."])
-                ].empty
+            for cidade in rotas_disponiveis["Cidade"].unique():
+                with st.expander(f"🏙️ {cidade}"):
+                    for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
 
-                if ja_clicou:
-                    st.success("✅ Você já clicou nesta rota hoje")
-                else:
-                    form_url = (
-                        "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
-                        f"?entry.392776957={id_motorista}"
-                        f"&entry.1682939517={row['Rota']}"
-                    )
-                    st.markdown(f"[👉 Tenho interesse nesta rota]({form_url})")
+                        ja_clicou = not df_interesse[
+                            (df_interesse["ID"] == id_motorista) &
+                            (df_interesse["Time"] == row["Rota"]) &
+                            (df_interesse["Data Exp."] == row["Data Exp."])
+                        ].empty
+
+                        if ja_clicou:
+                            st.markdown("""
+                            <div class="card">
+                                <p style="color: green; font-weight:bold;">
+                                    ✅ Você já clicou nesta rota hoje
+                                </p>
+                            </div>
+                            """, unsafe_allow_html=True)
+                        else:
+                            st.markdown("""
+                            <div class="card">
+                                <p>👉 Rota disponível para manifestação</p>
+                            </div>
+                            """, unsafe_allow_html=True)
 
 # ================= ASSINATURA =================
-st.markdown("""
-<hr>
-<div style="text-align:center;color:#888;font-size:0.85em;">
-<strong>RouteAssist</strong><br>
-Concept & Development — Claudiane Vieira<br>
-Since Dec/2025
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    """
+    <hr>
+    <div style="text-align: center; color: #888; font-size: 0.85em;">
+        <strong>RouteAssist</strong><br>
+        Concept & Development — Claudiane Vieira<br>
+        Since Dec/2025
+    </div>
+    """,
+    unsafe_allow_html=True
+)
