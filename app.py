@@ -128,10 +128,12 @@ if id_motorista:
     url_rotas = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
     url_interesse = "https://docs.google.com/spreadsheets/d/1ux9UP_oJ9VTCTB_YMpvHr1VEPpFHdIBY2pudgehtTIE/export?format=xlsx"
 
+    # ===== BASE ROTAS =====
     df = pd.read_excel(url_rotas)
     df["ID"] = df["ID"].astype(str).str.strip()
     df["Data Exp."] = pd.to_datetime(df["Data Exp."], errors="coerce").dt.date
 
+    # ===== DRIVERS ATIVOS =====
     df_drivers = pd.read_excel(url_rotas, sheet_name="DRIVERS ATIVOS", dtype=str)
     df_drivers["ID"] = df_drivers["ID"].str.strip()
     ids_ativos = set(df_drivers["ID"].dropna())
@@ -146,12 +148,58 @@ if id_motorista:
         df["ID"].isna() | (df["ID"] == "") | (df["ID"] == "-")
     ]
 
+    # ===== INTERESSE =====
     df_interesse = pd.read_excel(url_interesse, sheet_name="Time")
     df_interesse["ID"] = df_interesse["ID"].astype(str).str.strip()
     df_interesse["Time"] = df_interesse["Time"].astype(str).str.strip()
-    df_interesse["Data Exp."] = pd.to_datetime(df_interesse["Data Exp."], errors="coerce").dt.date
+    df_interesse["Data Exp."] = pd.to_datetime(
+        df_interesse["Data Exp."], errors="coerce"
+    ).dt.date
 
-    # ===== COM ROTA =====
+    # ===== DRIVER COM ROTA =====
     if not resultado.empty:
         for _, row in resultado.iterrows():
-            data_fmt = row["Data Exp."].strftime("%d/%m/%Y") if pd.notna(ro_
+            data_exp = row["Data Exp."]
+            data_fmt = data_exp.strftime("%d/%m/%Y") if pd.notna(data_exp) else "-"
+
+            st.markdown(f"""
+            <div class="card">
+                <h4>🚚 Rota: {row['Rota']}</h4>
+                <p>👤 <strong>Motorista:</strong> {row['Nome']}</p>
+                <p>🚗 <strong>Placa:</strong> {row['Placa']}</p>
+                <p>🏙️ <strong>Cidade:</strong> {row['Cidade']}</p>
+                <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
+                <p>📅 <strong>Data da Expedição:</strong> {data_fmt}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        if liberar_dobra and not rotas_disponiveis.empty:
+            st.divider()
+            st.markdown("### 📦 Rotas disponíveis")
+
+            for _, row in rotas_disponiveis.iterrows():
+                ja_clicou = not df_interesse[
+                    (df_interesse["ID"] == id_motorista) &
+                    (df_interesse["Time"] == row["Rota"]) &
+                    (df_interesse["Data Exp."] == row["Data Exp."])
+                ].empty
+
+                if ja_clicou:
+                    st.success("✅ Você já clicou nesta rota hoje")
+                else:
+                    form_url = (
+                        "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
+                        f"?entry.392776957={id_motorista}"
+                        f"&entry.1682939517={row['Rota']}"
+                    )
+                    st.markdown(f"[👉 Tenho interesse nesta rota]({form_url})")
+
+# ================= ASSINATURA =================
+st.markdown("""
+<hr>
+<div style="text-align:center;color:#888;font-size:0.85em;">
+<strong>RouteAssist</strong><br>
+Concept & Development — Claudiane Vieira<br>
+Since Dec/2025
+</div>
+""", unsafe_allow_html=True)
