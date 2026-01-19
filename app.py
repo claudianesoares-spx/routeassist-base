@@ -110,18 +110,17 @@ with st.sidebar:
                     registrar_acao(nivel, "FECHOU CONSULTA")
                     st.warning("Consulta FECHADA")
 
-            # ================= ADMIN PANEL =================
-            st.markdown("### 🗂️ Painel de Controle - Rotas Disponíveis")
+            # ================= ADMIN PANEL - SOMENTE LEITURA =================
+            st.markdown("### 🗂️ Painel de Controle - Rotas Disponíveis (Somente Leitura)")
             try:
                 url_rotas = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
-                df_rotas = pd.read_excel(url_rotas)
-                rotas_disponiveis_admin = df_rotas[
-                    df_rotas["ID"].isna() |
-                    (df_rotas["ID"] == "") |
-                    (df_rotas["ID"].str.lower() == "nan") |
-                    (df_rotas["ID"] == "-")
+                df_rotas_admin = pd.read_excel(url_rotas)
+                rotas_disponiveis_admin = df_rotas_admin[
+                    df_rotas_admin["ID"].isna() |
+                    (df_rotas_admin["ID"] == "") |
+                    (df_rotas_admin["ID"].str.lower() == "nan") |
+                    (df_rotas_admin["ID"] == "-")
                 ]
-
                 if rotas_disponiveis_admin.empty:
                     st.warning("🚫 Nenhuma rota disponível no momento.")
                 else:
@@ -132,7 +131,7 @@ with st.sidebar:
                             <h4>🚚 Rota: {row['Rota']}</h4>
                             <p>🏙️ Cidade: {row['Cidade']}</p>
                             <p>📍 Bairro: {row['Bairro']}</p>
-                            <p>🚗 Tipo Veículo: {row.get('Tipo Veiculo', 'Não informado')}</p>
+                            <p>🚗 Tipo Veículo: {row.get('Tipo Veiculo','Não informado')}</p>
                             <p>📅 Data da Expedição: {data_fmt}</p>
                         </div>
                         """, unsafe_allow_html=True)
