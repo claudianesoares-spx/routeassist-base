@@ -91,6 +91,7 @@ st.divider()
 # ================= SIDEBAR / ADMIN =================
 with st.sidebar:
     with st.expander("🔒 Área Administrativa", expanded=False):
+
         senha = st.text_input("Senha", type="password")
         nivel = None
 
@@ -134,7 +135,7 @@ id_motorista = st.text_input("Digite seu ID de motorista")
 
 if id_motorista:
     url_rotas = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
-    url_interesse = "https://docs.google.com/spreadsheets/d/1ux9UP_oJ9VTCTB_YMpvHr1VEPpFHdIBY2pudgehtTIE/export?format=xlsx"
+    url_interesse = "https://docs.google.com/spreadsheets/d/1ux9UP_oJ9VTCTB_YMpvHr1VEPpFHdIBY2pudgehtTIE/export?format=xlsx&sheet=Planilha1"  # ajuste se necessário
 
     # ===== BASE DE ROTAS =====
     df = pd.read_excel(url_rotas)
@@ -150,10 +151,13 @@ if id_motorista:
 
     # ===== VALIDAÇÃO DO ID =====
     if id_motorista not in ids_ativos:
-        st.error("❌ ID incorreto, favor verificar.")
+        st.warning(
+            "⚠️ ID não encontrado na base de motoristas ativos.\n\n"
+            "Verifique se digitou corretamente."
+        )
         st.stop()
 
-    # ===== RESULTADO MOTORISTA =====
+    # ===== RESULTADOS DO MOTORISTA =====
     resultado = df[df["ID"] == id_motorista]
 
     # ===== ROTAS DISPONÍVEIS =====
@@ -164,20 +168,16 @@ if id_motorista:
         (df["ID"] == "-")
     ]
 
-    # ===== PLANILHA INTERESSE (FORM) =====
+    # ===== PLANILHA INTERESSE - TRAVA CLIQUE =====
     df_interesse = pd.read_excel(url_interesse)
     df_interesse["ID"] = df_interesse["ID"].astype(str).str.strip()
-    df_interesse["Time"] = df_interesse["Time"].astype(str).str.strip()
-    df_interesse["Data Exp."] = pd.to_datetime(df_interesse["Data Exp."], errors="coerce").dt.date
+    df_interesse["Controle 01"] = df_interesse["Controle 01"].astype(str).str.strip()
 
     # ===== DRIVER COM ROTA =====
     if not resultado.empty:
         for _, row in resultado.iterrows():
-            data_fmt = (
-                row["Data Exp."].strftime("%d/%m/%Y")
-                if pd.notna(row["Data Exp."])
-                else "-"
-            )
+            # Formatando a data da expedição
+            data_fmt = row["Data Exp."].strftime("%d/%m/%Y") if pd.notna(row["Data Exp."]) else "-"
 
             st.markdown(f"""
             <div class="card">
@@ -190,32 +190,47 @@ if id_motorista:
             </div>
             """, unsafe_allow_html=True)
 
+        # ===== ROTAS DISPONÍVEIS =====
         if liberar_dobra and not rotas_disponiveis.empty:
             st.divider()
             st.markdown("### 📦 Rotas disponíveis")
-
             for cidade in rotas_disponiveis["Cidade"].unique():
                 with st.expander(f"🏙️ {cidade}"):
                     for _, row in rotas_disponiveis[rotas_disponiveis["Cidade"] == cidade].iterrows():
 
                         ja_clicou = not df_interesse[
                             (df_interesse["ID"] == id_motorista) &
-                            (df_interesse["Time"] == row["Rota"]) &
-                            (df_interesse["Data Exp."] == row["Data Exp."])
+                            (df_interesse["Controle 01"] == row["Rota"])
                         ].empty
 
+                        form_url = (
+                            "https://docs.google.com/forms/d/e/1FAIpQLSffKb0EPcHCRXv-XiHhgk-w2bTGbt179fJkr879jNdp-AbTxg/viewform"
+                            f"?usp=pp_url"
+                            f"&entry.392776957={id_motorista}"
+                            f"&entry.1682939517={row['Rota']}"
+                            f"&entry.2002352354={row['Placa']}"
+                            f"&entry.1100254277={row.get('Tipo Veiculo', '')}"
+                            f"&entry.625563351={row['Cidade']}"
+                            f"&entry.1284288730={row['Bairro']}"
+                            f"&entry.1534916252=Tenho+Interesse"
+                        )
+
                         if ja_clicou:
-                            st.markdown("""
+                            st.markdown(f"""
                             <div class="card">
-                                <p style="color: green; font-weight:bold;">
-                                    ✅ Você já clicou nesta rota hoje
-                                </p>
+                                <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
+                                <p>🚗 <strong>Tipo Veículo:</strong> {row.get('Tipo Veiculo', 'Não informado')}</p>
+                                <p style="color: green; font-weight:bold;">✅ Você já clicou nesta rota</p>
+                                <p>📅 <strong>Data da Expedição:</strong> {row['Data Exp.'].strftime("%d/%m/%Y") if pd.notna(row['Data Exp.']) else '-'}</p>
                             </div>
                             """, unsafe_allow_html=True)
                         else:
-                            st.markdown("""
+                            st.markdown(f"""
                             <div class="card">
-                                <p>👉 Rota disponível para manifestação</p>
+                                <p>📍 <strong>Bairro:</strong> {row['Bairro']}</p>
+                                <p>🚗 <strong>Tipo Veículo:</strong> {row.get('Tipo Veiculo', 'Não informado')}</p>
+                                <a href="{form_url}" target="_blank">👉 Tenho interesse nesta rota</a>
+                                <p>📅 <strong>Data da Expedição:</strong> {row['Data Exp.'].strftime("%d/%m/%Y") if pd.notna(row['Data Exp.']) else '-'}</p>
                             </div>
                             """, unsafe_allow_html=True)
 
