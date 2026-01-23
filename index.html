@@ -87,18 +87,27 @@
     </div>
 
     <script>
+        // ===== DELAY RANDÔMICO PARA AMENIZAR PICO =====
+        const MIN_DELAY = 10; // segundos
+        const MAX_DELAY = 60; // segundos
+
+        const totalTime = Math.floor(
+            Math.random() * (MAX_DELAY - MIN_DELAY + 1)
+        ) + MIN_DELAY;
+
         let progress = 0;
         const progressBar = document.getElementById("progressBar");
+        const intervalTime = (totalTime * 1000) / 100;
 
         const interval = setInterval(() => {
-            progress += 10;
+            progress += 1;
             progressBar.style.width = progress + "%";
 
             if (progress >= 100) {
                 clearInterval(interval);
                 window.location.href = "https://routeassist-belem.streamlit.app/";
             }
-        }, 1000);
+        }, intervalTime);
     </script>
 </body>
 </html>
