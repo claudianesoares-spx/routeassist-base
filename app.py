@@ -46,42 +46,26 @@ def registrar_acao(usuario, acao):
     })
     save_config(config)
 
-# ================= CACHE GLOBAL =================
-CACHE = {
-    "rotas": None,
-    "drivers": None,
-    "interesse": None,
-    "last_update": 0
-}
+# ================= CACHE GLOBAL (STREAMLIT) =================
+@st.cache_data(ttl=300, show_spinner=False)
+def carregar_dados():
+    url_rotas = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
+    url_interesse = "https://docs.google.com/spreadsheets/d/1ux9UP_oJ9VTCTB_YMpvHr1VEPpFHdIBY2pudgehtTIE/export?format=xlsx"
 
-CACHE_TTL = 300  # 5 minutos
+    df = pd.read_excel(url_rotas)
+    df["ID"] = df["ID"].astype(str).str.strip()
+    df["Data Exp."] = pd.to_datetime(df["Data Exp."], errors="coerce").dt.date
 
-def carregar_dados_com_cache():
-    agora = time.time()
+    df_drivers = pd.read_excel(url_rotas, sheet_name="DRIVERS ATIVOS", dtype=str)
+    df_drivers["ID"] = df_drivers["ID"].str.strip()
+    ids_ativos = set(df_drivers["ID"].dropna())
 
-    if CACHE["rotas"] is None or (agora - CACHE["last_update"]) > CACHE_TTL:
-        url_rotas = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=xlsx"
-        url_interesse = "https://docs.google.com/spreadsheets/d/1ux9UP_oJ9VTCTB_YMpvHr1VEPpFHdIBY2pudgehtTIE/export?format=xlsx"
+    df_interesse = pd.read_excel(url_interesse)
+    df_interesse["ID"] = df_interesse["ID"].astype(str).str.strip()
+    df_interesse["Controle 01"] = df_interesse["Controle 01"].astype(str).str.strip()
+    df_interesse["Data Exp."] = pd.to_datetime(df_interesse["Data Exp."], errors="coerce").dt.date
 
-        df = pd.read_excel(url_rotas)
-        df["ID"] = df["ID"].astype(str).str.strip()
-        df["Data Exp."] = pd.to_datetime(df["Data Exp."], errors="coerce").dt.date
-
-        df_drivers = pd.read_excel(url_rotas, sheet_name="DRIVERS ATIVOS", dtype=str)
-        df_drivers["ID"] = df_drivers["ID"].str.strip()
-        ids_ativos = set(df_drivers["ID"].dropna())
-
-        df_interesse = pd.read_excel(url_interesse)
-        df_interesse["ID"] = df_interesse["ID"].astype(str).str.strip()
-        df_interesse["Controle 01"] = df_interesse["Controle 01"].astype(str).str.strip()
-        df_interesse["Data Exp."] = pd.to_datetime(df_interesse["Data Exp."], errors="coerce").dt.date
-
-        CACHE["rotas"] = df
-        CACHE["drivers"] = ids_ativos
-        CACHE["interesse"] = df_interesse
-        CACHE["last_update"] = agora
-
-    return CACHE["rotas"], CACHE["drivers"], CACHE["interesse"]
+    return df, ids_ativos, df_interesse
 
 # ================= ESTILO =================
 st.markdown("""
@@ -220,14 +204,13 @@ st.markdown("### 🔍 Consulta Operacional de Rotas")
 id_motorista = st.text_input("Digite seu ID de motorista")
 
 if id_motorista:
-    df, ids_ativos, df_interesse = carregar_dados_com_cache()
+    df, ids_ativos, df_interesse = carregar_dados()
     id_motorista = id_motorista.strip()
 
     if id_motorista not in ids_ativos:
         st.warning("⚠️ ID não encontrado na base de motoristas ativos. Verifique se digitou corretamente.")
         st.stop()
 
-    # >>> FRASE INSERIDA AQUI (SEM ALTERAR MAIS NADA)
     st.info("🔄 Após clicar em **“Tenho interesse”**, atualize a página para visualizar a confirmação do envio do interesse.")
 
     resultado = df[df["ID"] == id_motorista]
