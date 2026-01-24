@@ -19,55 +19,48 @@
         .container {  
             text-align: center;  
             background: #ffffff;  
-            padding: 48px 56px;  
-            border-radius: 18px;  
-            box-shadow: 0 12px 28px rgba(0,0,0,0.08);  
-            max-width: 420px;  
+            padding: 40px 45px;  
+            border-radius: 14px;  
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);  
+            max-width: 440px;  
             width: 90%;  
-            animation: fadeIn 0.5s ease-out;  
-        }  
-  
-        @keyframes fadeIn {  
-            from { opacity: 0; transform: translateY(10px); }  
-            to { opacity: 1; transform: translateY(0); }  
         }  
   
         h1 {  
             margin-bottom: 8px;  
-            font-size: 32px;  
+            font-size: 30px;  
             color: #1f2d3d;  
         }  
   
         p {  
             margin-top: 0;  
-            font-size: 16px;  
+            font-size: 15px;  
             color: #555;  
         }  
   
         .progress-container {  
-            margin-top: 28px;  
+            margin-top: 22px;  
+            width: 100%;  
             background: #e6e6e6;  
             border-radius: 10px;  
+            height: 12px;  
             overflow: hidden;  
-            height: 14px;  
         }  
   
         .progress-bar {  
+            width: 0%;  
             height: 100%;  
-            width: 3%;  
-            background-color: #00c6ff;  
-            transition: width 0.4s ease-out;  
+            background: #00b6ff;  
         }  
   
         .status {  
-            margin-top: 16px;  
+            margin-top: 18px;  
             font-size: 14px;  
             color: #666;  
-            line-height: 1.4;  
         }  
   
         .footer {  
-            margin-top: 36px;  
+            margin-top: 32px;  
             font-size: 12px;  
             color: #999;  
         }  
@@ -79,12 +72,10 @@
         <h1>RouteAssist</h1>  
         <p>Central de apoio operacional – Belém</p>  
   
-        <div class="status" id="statusText">  
-            🔄 Preparando acesso seguro...  
-        </div>  
+        <div class="status" id="status">Carregando...</div>  
   
         <div class="progress-container">  
-            <div class="progress-bar" id="progressBar"></div>  
+            <div class="progress-bar" id="bar"></div>  
         </div>  
   
         <div class="footer">  
@@ -93,36 +84,36 @@
     </div>  
   
     <script>  
-        // ===== DELAY AJUSTADO =====  
-        const MIN_DELAY = 8;    
-        const MAX_DELAY = 28;   
-        const totalTime = Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;  
+        // Tempo mais suave e confiável  
+        const MIN = 6;  
+        const MAX = 18;  
+        const delay = Math.floor(Math.random() * (MAX - MIN + 1)) + MIN;  
   
-        let progress = 3; // começa avançado  
-        const progressBar = document.getElementById("progressBar");  
-        const statusText = document.getElementById("statusText");  
+        let progress = 0;  
+        const bar = document.getElementById("bar");  
+        const status = document.getElementById("status");  
   
-        const intervalTime = (totalTime * 1000) / 100;  
+        const steps = delay * 20; // 20 updates/segundo  
+        const interval = (delay * 1000) / steps;  
   
-        const interval = setInterval(() => {  
-            progress += 1;  
+        const timer = setInterval(() => {  
+            progress++;  
   
-            // ===== ANIMAÇÃO NÃO LINEAR =====  
-            let eased = Math.pow(progress / 100, 0.65) * 100;  
-            progressBar.style.width = eased + "%";  
+            bar.style.width = (progress / steps) * 100 + "%";  
   
-            // ===== STATUS DINÂMICO =====  
-            if (progress === 10) statusText.innerHTML = "🔍 Verificando conexão...";  
-            if (progress === 30) statusText.innerHTML = "📡 Sincronizando com o servidor...";  
-            if (progress === 55) statusText.innerHTML = "📦 Carregando dados operacionais...";  
-            if (progress === 80) statusText.innerHTML = "⏳ Quase lá... preparando interface...";  
-            if (progress === 95) statusText.innerHTML = "🚀 Finalizando...";  
-  
-            if (progress >= 100) {  
-                clearInterval(interval);  
+            if (progress === Math.floor(steps * 0.15)) status.innerHTML = "🔍 Verificando segurança...";  
+            if (progress === Math.floor(steps * 0.35)) status.innerHTML = "📡 Conectando ao servidor...";  
+            if (progress === Math.floor(steps * 0.60)) status.innerHTML = "📦 Preparando dados...";  
+            if (progress === Math.floor(steps * 0.80)) status.innerHTML = "⏳ Finalizando...";  
+              
+            if (progress >= steps) {  
+                clearInterval(timer);  
+                status.innerHTML = "🚀 Entrando...";  
                 window.location.href = "https://routeassist-belem.streamlit.app/";  
             }  
-        }, intervalTime);  
+  
+        }, interval);  
     </script>  
+  
 </body>  
 </html>
