@@ -1,113 +1,101 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <title>RouteAssist | Belém</title>
-
-    <style>
-        body {
-            margin: 0;
-            height: 100vh;
-            background: #f4f6f8;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-family: Arial, sans-serif;
-            color: #333;
-        }
-
-        .container {
-            text-align: center;
-            background: #ffffff;
-            padding: 48px 56px;
-            border-radius: 18px;
-            box-shadow: 0 12px 28px rgba(0,0,0,0.08);
-            max-width: 420px;
-            width: 90%;
-        }
-
-        h1 {
-            margin-bottom: 8px;
-            font-size: 32px;
-            color: #1f2d3d;
-        }
-
-        p {
-            margin-top: 0;
-            font-size: 16px;
-            color: #555;
-        }
-
-        .progress-container {
-            margin-top: 28px;
-            background: #e6e6e6;
-            border-radius: 10px;
-            overflow: hidden;
-            height: 14px;
-        }
-
-        .progress-bar {
-            height: 100%;
-            width: 0%;
-            background-color: #00c6ff;
-            transition: width 1s linear;
-        }
-
-        .status {
-            margin-top: 16px;
-            font-size: 14px;
-            color: #666;
-        }
-
-        .footer {
-            margin-top: 36px;
-            font-size: 12px;
-            color: #999;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="container">
-        <h1>RouteAssist</h1>
-        <p>Central de apoio operacional – Belém</p>
-
-        <div class="status">
-            Alto volume de acessos detectado.<br>
-            Você está em uma fila virtual para melhor desempenho.
-        </div>
-
-        <div class="progress-container">
-            <div class="progress-bar" id="progressBar"></div>
-        </div>
-
-        <div class="footer">
-            Created and developed by Claudiane Vieira · Dec 2025
-        </div>
-    </div>
-
-    <script>
-        // ===== DELAY RANDÔMICO PARA AMENIZAR PICO =====
-        const MIN_DELAY = 10; // segundos
-        const MAX_DELAY = 60; // segundos
-
-        const totalTime = Math.floor(
-            Math.random() * (MAX_DELAY - MIN_DELAY + 1)
-        ) + MIN_DELAY;
-
-        let progress = 0;
-        const progressBar = document.getElementById("progressBar");
-        const intervalTime = (totalTime * 1000) / 100;
-
-        const interval = setInterval(() => {
-            progress += 1;
-            progressBar.style.width = progress + "%";
-
-            if (progress >= 100) {
-                clearInterval(interval);
-                window.location.href = "https://routeassist-belem.streamlit.app/";
-            }
-        }, intervalTime);
-    </script>
-</body>
-</html>
+<!DOCTYPE html>  
+<html lang="pt-BR">  
+<head>  
+    <meta charset="UTF-8">  
+    <title>RouteAssist | Belém</title>  
+  
+    <style>  
+        body {  
+            margin: 0;  
+            height: 100vh;  
+            background: #f4f6f8;  
+            display: flex;  
+            align-items: center;  
+            justify-content: center;  
+            font-family: Arial, sans-serif;  
+            color: #333;  
+        }  
+  
+        .container {  
+            text-align: center;  
+            background: #ffffff;  
+            padding: 48px 56px;  
+            border-radius: 18px;  
+            box-shadow: 0 12px 28px rgba(0,0,0,0.08);  
+            max-width: 420px;  
+            width: 90%;  
+            animation: fadeIn 0.5s ease-out;  
+        }  
+  
+        @keyframes fadeIn {  
+            from { opacity: 0; transform: translateY(10px); }  
+            to { opacity: 1; transform: translateY(0); }  
+        }  
+  
+        h1 {  
+            margin-bottom: 8px;  
+            font-size: 32px;  
+            color: #1f2d3d;  
+        }  
+  
+        p {  
+            margin-top: 0;  
+            font-size: 16px;  
+            color: #555;  
+        }  
+  
+        .progress-container {  
+            margin-top: 28px;  
+            background: #e6e6e6;  
+            border-radius: 10px;  
+            overflow: hidden;  
+            height: 14px;  
+        }  
+  
+        .progress-bar {  
+            height: 100%;  
+            width: 3%;  
+            background-color: #00c6ff;  
+            transition: width 0.4s ease-out;  
+        }  
+  
+        .status {  
+            margin-top: 16px;  
+            font-size: 14px;  
+            color: #666;  
+            line-height: 1.4;  
+        }  
+  
+        .footer {  
+            margin-top: 36px;  
+            font-size: 12px;  
+            color: #999;  
+        }  
+    </style>  
+</head>  
+  
+<body>  
+    <div class="container">  
+        <h1>RouteAssist</h1>  
+        <p>Central de apoio operacional – Belém</p>  
+  
+        <div class="status" id="statusText">  
+            🔄 Preparando acesso seguro...  
+        </div>  
+  
+        <div class="progress-container">  
+            <div class="progress-bar" id="progressBar"></div>  
+        </div>  
+  
+        <div class="footer">  
+            Created and developed by Claudiane Vieira · Dec 2025  
+        </div>  
+    </div>  
+  
+    <script>  
+        // ===== DELAY AJUSTADO =====  
+        const MIN_DELAY = 8;    
+        const MAX_DELAY = 28;   
+        const totalTime = Math.floor(Math.random() * (MAX_DELAY - MIN_DELAY + 1)) + MIN_DELAY;  
+  
+        let progress = 3; // co
