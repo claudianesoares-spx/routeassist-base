@@ -45,6 +45,10 @@ def registrar_acao(usuario, acao):
     })
     save_config(config)
 
+# ================= CONTROLE DE PORTAL =================
+if "portao_ok" not in st.session_state:
+    st.session_state.portao_ok = False
+
 # ================= URLs =================
 URL_ROTAS = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=csv&gid=1803149397"
 URL_DRIVERS = "https://docs.google.com/spreadsheets/d/1F8HC2D8UxRc5R_QBdd-zWu7y6Twqyk3r0NTPN0HCWUI/export?format=csv&gid=36116218"
@@ -83,36 +87,25 @@ if "id_motorista" not in st.session_state:
 if "consultado" not in st.session_state:
     st.session_state.consultado = False
 
-# ================= CSS COMPACTO =================
+# ================= CSS =================
 st.markdown("""
 <style>
 .card {
     background-color: #ffffff;
-    padding: 10px 12px;          /* padding reduzido */
-    border-radius: 8px;          /* borda menos arredondada */
-    box-shadow: 0 2px 6px rgba(0,0,0,0.07); /* sombra mais leve */
+    padding: 10px 12px;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.07);
     border-left: 4px solid #ff7a00;
     margin-bottom: 12px;
-    font-size: 14px;             /* fonte menor */
-    line-height: 1.3;            /* menos espaçamento entre linhas */
+    font-size: 14px;
+    line-height: 1.3;
 }
-
-.card p {
-    margin: 4px 0;               /* reduz o espaçamento entre parágrafos */
-}
-
+.card p { margin: 4px 0; }
 .card .flex-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 4px;
-}
-
-@media only screen and (max-width: 480px) {
-    .card {
-        padding: 8px 10px;
-        font-size: 13px;
-    }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -142,6 +135,7 @@ with st.sidebar:
             with col1:
                 if st.button("🔓 ABRIR"):
                     config["status_site"] = "ABERTO"
+                    st.session_state.portao_ok = True  # 🔑 libera sessão
                     registrar_acao(nivel, "ABRIU CONSULTA")
             with col2:
                 if st.button("🔒 FECHAR"):
@@ -157,6 +151,11 @@ st.divider()
 
 if config["status_site"] == "FECHADO":
     st.warning("🚫 Consulta indisponível no momento.")
+    st.stop()
+
+# ================= BLOQUEIO DE LINK DIRETO =================
+if not st.session_state.get("portao_ok", False):
+    st.error("🚫 Acesso somente pelo portal oficial.")
     st.stop()
 
 # ================= CONSULTA =================
@@ -182,7 +181,6 @@ if st.session_state.consultado and st.session_state.id_motorista:
         st.warning("⚠️ ID não encontrado.")
         st.stop()
 
-    # ===== ROTAS DO MOTORISTA =====
     rotas_motorista = df_rotas[df_rotas["ID"] == id_motorista]
     if not rotas_motorista.empty:
         st.markdown("### 🚚 Suas rotas atribuídas")
@@ -190,64 +188,24 @@ if st.session_state.consultado and st.session_state.id_motorista:
             data_fmt = row["Data Exp."].strftime("%d/%m/%Y") if pd.notna(row["Data Exp."]) else "-"
             st.markdown(f"""
             <div class="card">
-                <div class="flex-row">
-                    <span><strong>ROTA:</strong> {row['Rota']}</span>
-                    <span><strong>PLACA:</strong> {row['Placa']}</span>
-                </div>
-                <p><strong>NOME:</strong> {row['Nome']}</p>
-                <div class="flex-row">
-                    <span><strong>TIPO:</strong> {row['Tipo Veiculo']}</span>
-                    <span><strong>DATA:</strong> {data_fmt}</span>
-                </div>
-                <div class="flex-row">
-                    <span><strong>BAIRRO:</strong> {row['Bairro']}</span>
-                    <span><strong>CIDADE:</strong> {row['Cidade']}</span>
-                </div>
+                <strong>ROTA:</strong> {row['Rota']} | <strong>PLACA:</strong> {row['Placa']}<br>
+                <strong>NOME:</strong> {row['Nome']}<br>
+                <strong>BAIRRO:</strong> {row['Bairro']} | <strong>CIDADE:</strong> {row['Cidade']}<br>
+                <strong>DATA:</strong> {data_fmt}
             </div>
             """, unsafe_allow_html=True)
 
-    # ===== ROTAS DISPONÍVEIS =====
     rotas_disp = df_rotas[df_rotas["ID"] == ""]
-
     if not rotas_disp.empty:
         st.markdown("### 📦 Rotas disponíveis")
-
         for cidade, df_cidade in rotas_disp.groupby("Cidade"):
-            with st.expander(f"🏙️ {cidade}", expanded=False):
+            with st.expander(f"🏙️ {cidade}"):
                 for _, row in df_cidade.iterrows():
-                    data_fmt = row["Data Exp."].strftime("%d/%m/%Y") if pd.notna(row["Data Exp."]) else "-"
-                    rota_key = f"{row['Rota']}_{row['Bairro']}_{data_fmt}"
-
-                    form_url = (
-                        f"{GOOGLE_FORM_URL}?usp=pp_url"
-                        f"&entry.392776957={id_motorista}"
-                        f"&entry.1682939517={row['Rota']}"
-                        f"&entry.625563351={row['Cidade']}"
-                        f"&entry.1284288730={row['Bairro']}"
-                        f"&entry.1534916252=Tenho+Interesse"
-                    )
-
-                    # --- CARD COM ÍCONE DE VEÍCULO ---
-                    icone = "🚗" if str(row["Tipo Veiculo"]).upper() == "PASSEIO" else "🏍️"
-
-                    st.markdown(f"""
-                    <div class="card">
-                        <div class="flex-row">
-                            <span>📍 Bairro: {row['Bairro']}</span>
-                            <span>{icone} {row['Tipo Veiculo']}</span>
-                        </div>
-                        <p>📅 Data: {data_fmt}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    if rota_key in st.session_state.interesses:
-                        st.success("✔ Interesse registrado")
-                        st.markdown(f"[👉 Abrir formulário]({form_url})")
-                    else:
-                        if st.button("✋ Tenho interesse nesta rota", key=f"btn_{rota_key}"):
+                    rota_key = f"{row['Rota']}_{row['Bairro']}"
+                    if rota_key not in st.session_state.interesses:
+                        if st.button("✋ Tenho interesse nesta rota", key=rota_key):
                             st.session_state.interesses.add(rota_key)
                             st.success("✔ Interesse registrado")
-                            st.markdown(f"[👉 Abrir formulário]({form_url})")
 
 # ================= RODAPÉ =================
 st.markdown("""
