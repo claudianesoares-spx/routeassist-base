@@ -74,43 +74,42 @@ def carregar_motoristas(url):
     return df
 
 # ================= SESSION STATE =================
-if "interesses" not in st.session_state:
-    st.session_state.interesses = set()
+st.session_state.setdefault("interesses", set())
+st.session_state.setdefault("id_motorista", "")
+st.session_state.setdefault("consultado", False)
 
-if "id_motorista" not in st.session_state:
-    st.session_state.id_motorista = ""
-
-if "consultado" not in st.session_state:
-    st.session_state.consultado = False
-
-# ================= CSS COMPACTO =================
+# ================= CSS AJUSTADO =================
 st.markdown("""
 <style>
 .card {
     background-color: #ffffff;
-    padding: 10px 12px;          /* padding reduzido */
-    border-radius: 8px;          /* borda menos arredondada */
-    box-shadow: 0 2px 6px rgba(0,0,0,0.07); /* sombra mais leve */
-    border-left: 4px solid #ff7a00;
-    margin-bottom: 12px;
-    font-size: 14px;             /* fonte menor */
-    line-height: 1.3;            /* menos espaçamento entre linhas */
+    padding: 14px 16px;
+    border-radius: 10px;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+    border-left: 5px solid #ff7a00;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.5;
 }
 
 .card p {
-    margin: 4px 0;               /* reduz o espaçamento entre parágrafos */
+    margin: 6px 0;
 }
 
 .card .flex-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
+}
+
+section.main > div {
+    padding-bottom: 40px;
 }
 
 @media only screen and (max-width: 480px) {
     .card {
-        padding: 8px 10px;
+        padding: 12px;
         font-size: 13px;
     }
 }
@@ -119,7 +118,9 @@ st.markdown("""
 
 # ================= INTERFACE =================
 st.title("🧭 RouteAssist")
-st.markdown("Ferramenta de apoio operacional para alocação e redistribuição de rotas.")
+st.markdown(
+    "Ferramenta de apoio operacional para alocação e redistribuição de rotas."
+)
 st.divider()
 
 # ================= ADMIN =================
@@ -171,87 +172,9 @@ if st.button("🔍 Consultar"):
     st.session_state.id_motorista = id_input.strip()
     st.session_state.consultado = True
 
-if st.session_state.consultado and st.session_state.id_motorista:
-
-    id_motorista = st.session_state.id_motorista
-
-    df_rotas = carregar_rotas(URL_ROTAS)
-    df_drivers = carregar_motoristas(URL_DRIVERS)
-
-    if id_motorista not in set(df_drivers["ID"]):
-        st.warning("⚠️ ID não encontrado.")
-        st.stop()
-
-    # ===== ROTAS DO MOTORISTA =====
-    rotas_motorista = df_rotas[df_rotas["ID"] == id_motorista]
-    if not rotas_motorista.empty:
-        st.markdown("### 🚚 Suas rotas atribuídas")
-        for _, row in rotas_motorista.iterrows():
-            data_fmt = row["Data Exp."].strftime("%d/%m/%Y") if pd.notna(row["Data Exp."]) else "-"
-            st.markdown(f"""
-            <div class="card">
-                <div class="flex-row">
-                    <span><strong>ROTA:</strong> {row['Rota']}</span>
-                    <span><strong>PLACA:</strong> {row['Placa']}</span>
-                </div>
-                <p><strong>NOME:</strong> {row['Nome']}</p>
-                <div class="flex-row">
-                    <span><strong>TIPO:</strong> {row['Tipo Veiculo']}</span>
-                    <span><strong>DATA:</strong> {data_fmt}</span>
-                </div>
-                <div class="flex-row">
-                    <span><strong>BAIRRO:</strong> {row['Bairro']}</span>
-                    <span><strong>CIDADE:</strong> {row['Cidade']}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    # ===== ROTAS DISPONÍVEIS =====
-    rotas_disp = df_rotas[df_rotas["ID"] == ""]
-
-    if not rotas_disp.empty:
-        st.markdown("### 📦 Rotas disponíveis")
-
-        for cidade, df_cidade in rotas_disp.groupby("Cidade"):
-            with st.expander(f"🏙️ {cidade}", expanded=False):
-                for _, row in df_cidade.iterrows():
-                    data_fmt = row["Data Exp."].strftime("%d/%m/%Y") if pd.notna(row["Data Exp."]) else "-"
-                    rota_key = f"{row['Rota']}_{row['Bairro']}_{data_fmt}"
-
-                    form_url = (
-                        f"{GOOGLE_FORM_URL}?usp=pp_url"
-                        f"&entry.392776957={id_motorista}"
-                        f"&entry.1682939517={row['Rota']}"
-                        f"&entry.625563351={row['Cidade']}"
-                        f"&entry.1284288730={row['Bairro']}"
-                        f"&entry.1534916252=Tenho+Interesse"
-                    )
-
-                    # --- CARD COM ÍCONE DE VEÍCULO ---
-                    icone = "🚗" if str(row["Tipo Veiculo"]).upper() == "PASSEIO" else "🏍️"
-
-                    st.markdown(f"""
-                    <div class="card">
-                        <div class="flex-row">
-                            <span>📍 Bairro: {row['Bairro']}</span>
-                            <span>{icone} {row['Tipo Veiculo']}</span>
-                        </div>
-                        <p>📅 Data: {data_fmt}</p>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    if rota_key in st.session_state.interesses:
-                        st.success("✔ Interesse registrado")
-                        st.markdown(f"[👉 Abrir formulário]({form_url})")
-                    else:
-                        if st.button("✋ Tenho interesse nesta rota", key=f"btn_{rota_key}"):
-                            st.session_state.interesses.add(rota_key)
-                            st.success("✔ Interesse registrado")
-                            st.markdown(f"[👉 Abrir formulário]({form_url})")
-
 # ================= RODAPÉ =================
 st.markdown("""
-<hr>
+<hr style="margin-top:40px;">
 <div style="text-align:center; color:#888; font-size:0.85em;">
 <strong>RouteAssist</strong><br>
 Concept & Development — Claudiane Vieira<br>
